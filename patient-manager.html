@@ -224,17 +224,17 @@
   }
   .cal-month { font-size: 18px; font-weight: 700; }
   .cal-grid {
-    display: grid; grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
+    display: grid; grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
   }
   .cal-weekday {
     text-align: center; font-size: 11px; font-weight: 700;
     color: var(--text3); padding-bottom: 8px; letter-spacing: 0.05em;
   }
   .cal-day {
-    min-height: 80px; border-radius: var(--radius-sm);
+    min-height: 72px; border-radius: 8px;
     border: 1px solid var(--border);
-    padding: 6px; background: var(--surface);
+    padding: 4px; background: var(--surface);
     cursor: pointer; transition: all 0.15s; position: relative;
   }
   .cal-day:hover { border-color: var(--accent); background: var(--accent-light); }
@@ -246,10 +246,10 @@
   }
   .cal-day.today .cal-day-num { color: var(--accent); }
   .cal-event {
-    font-size: 10px; padding: 2px 5px; border-radius: 4px;
+    font-size: 9px; padding: 1px 4px; border-radius: 4px;
     margin-bottom: 2px; cursor: pointer;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    font-weight: 500;
+    font-weight: 600;
   }
   .cal-event.fitting { background: var(--accent-light); color: var(--accent); }
   .cal-event.pickup { background: var(--green-light); color: #1a9e94; }
@@ -380,11 +380,7 @@
           <button class="btn btn-primary" onclick="showPage('input')">➕ 新增</button>
         </div>
       </div>
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-num" id="stat-total">0</div>
-          <div class="stat-label">總患者數</div>
-        </div>
+      <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
         <div class="stat-card">
           <div class="stat-num" id="stat-today-pickup">0</div>
           <div class="stat-label">今日取件</div>
@@ -402,7 +398,7 @@
       <!-- TODAY'S SCHEDULE -->
       <div class="card">
         <div class="card-header">
-          <span class="card-title">📋 近期排程</span>
+          <span class="card-title">📋 今日排程</span>
           <button class="btn btn-ghost btn-sm" onclick="showPage('calendar')">查看行事曆</button>
         </div>
         <div class="card-body">
@@ -807,10 +803,17 @@ function parseOrthoLine(line) {
   const eye = eyeMatch[1].toUpperCase();
   let rest = clean.slice(eyeMatch[0].length).trim();
 
-  // 抓 myok 參數 (AZE0.55 pd1.5 oz6.0 等)
+  // 抓 myok 參數 (AZE0.55 pd1.5 oz6.0 等) → 直接整段保留當備注
   const myokParams = [];
-  rest = rest.replace(/(?<![\/\d])\b([A-Za-z]{1,4}[\d.]+)\b/g, (m) => {
-    if (/^\d/.test(m)) return m;
+  // 先把整個斜線後面的字母開頭區段抓出來
+  rest = rest.replace(/\/([A-Za-z][^\/\s]*)/g, (m, p1) => {
+    myokParams.push(p1); return '';
+  });
+  // 再抓獨立的字母+數字組合
+  // 抓字母開頭+數字的組合（如 AZE0.55, pd1.5, oz6.0）
+  const wordRx = new RegExp('([A-Za-z]{1,4}[0-9.]+)', 'g');
+  rest = rest.replace(wordRx, (m) => {
+    if (/^[0-9]/.test(m)) return m;
     myokParams.push(m); return '';
   }).trim();
 
@@ -1105,6 +1108,9 @@ function fmtParams(params, isOrthoK) {
         const c = colorMap[params[k]] || 'var(--text)';
         return `<span style="color:var(--text3);font-size:11px">${k}</span> <b style="color:${c}">${params[k]}</b>`;
       }
+      if (k === '其他參數') {
+        return `<span style="color:var(--text3);font-size:10px;display:block;margin-top:2px">${params[k]}</span>`;
+      }
       return `<span style="color:var(--text3);font-size:11px">${k}</span> <b>${params[k]}</b>`;
     })
     .join('　');
@@ -1244,8 +1250,6 @@ function renderDashboard() {
   const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
 
   document.getElementById('today-date').textContent = today.toLocaleDateString('zh-TW', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
-  document.getElementById('stat-total').textContent = patients.length;
-
   let todayPickup = 0, todayFitting = 0, weekCount = 0;
   patients.forEach(p => {
     if (p.pickupDate && new Date(p.pickupDate).toDateString() === todayStr) todayPickup++;
@@ -1257,27 +1261,30 @@ function renderDashboard() {
   document.getElementById('stat-today-fitting').textContent = todayFitting;
   document.getElementById('stat-week').textContent = weekCount;
 
-  // Upcoming list
+  // 今日排程
+  const todayEnd = new Date(today); todayEnd.setHours(23,59,59,999);
   const events = [];
   patients.forEach(p => {
     if (p.fittingDate) events.push({ date: new Date(p.fittingDate), label: '驗配', patient: p, type: 'fitting' });
-    if (p.pickupDate) events.push({ date: new Date(p.pickupDate), label: '取件', patient: p, type: 'pickup' });
+    if (p.pickupDate)  events.push({ date: new Date(p.pickupDate),  label: '取件', patient: p, type: 'pickup' });
   });
   events.sort((a, b) => a.date - b.date);
-  const upcoming = events.filter(e => e.date >= today).slice(0, 8);
+  const todayEvents = events.filter(e => e.date >= today && e.date <= todayEnd);
 
   const el = document.getElementById('upcoming-list');
-  if (!upcoming.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div>暫無近期排程</div>'; return; }
-  el.innerHTML = upcoming.map(e => `
-    <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="width:60px;text-align:center">
-        <div style="font-size:11px;color:var(--text3)">${e.date.toLocaleDateString('zh-TW',{month:'short',day:'numeric'})}</div>
-        <div style="font-size:12px;font-weight:600;color:var(--text2)">${e.date.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}</div>
+  if (!todayEvents.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">✨</div>今日無排程</div>';
+    return;
+  }
+  el.innerHTML = todayEvents.map(e => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="width:48px;text-align:center">
+        <div style="font-size:13px;font-weight:700;color:var(--text2)">${e.date.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}</div>
       </div>
       <span class="badge ${e.type === 'fitting' ? 'badge-blue' : 'badge-green'}">${e.label}</span>
       <div style="flex:1">
         <span style="font-weight:600">${e.patient.name}</span>
-        <span style="color:var(--text3);font-size:12px;margin-left:8px">${e.patient.hospital || ''} ${e.patient.doctor || ''}</span>
+        <span style="color:var(--text3);font-size:12px;margin-left:8px">${e.patient.hospital||''} ${e.patient.doctor||''}</span>
       </div>
       <button class="btn btn-ghost btn-sm" onclick="showDetail('${e.patient.id}')">查看</button>
     </div>
@@ -1286,31 +1293,47 @@ function renderDashboard() {
 
 // ── CALENDAR ──
 function renderCalendar() {
-  const weekdays = ['日','一','二','三','四','五','六'];
-  const wdEl = document.getElementById('cal-weekdays');
-  wdEl.innerHTML = weekdays.map(d => `<div class="cal-weekday">${d}</div>`).join('');
+  // 週一到週六（6欄，不顯示週日）
+  const weekdays = ['一','二','三','四','五','六'];
+  document.getElementById('cal-weekdays').innerHTML =
+    weekdays.map(d => `<div class="cal-weekday">${d}</div>`).join('');
 
   document.getElementById('cal-month-label').textContent = `${calYear} 年 ${calMonth + 1} 月`;
-  const first = new Date(calYear, calMonth, 1);
-  const last = new Date(calYear, calMonth + 1, 0);
   const days = document.getElementById('cal-days');
   days.innerHTML = '';
 
-  const today = new Date(); today.setHours(0,0,0,0);
+  // 產生本月所有日期（排除週日）
+  // 先從本月第一個週一往前推算要補幾天
+  const first = new Date(calYear, calMonth, 1);
+  const last  = new Date(calYear, calMonth + 1, 0);
 
-  // Pad start
-  for (let i = 0; i < first.getDay(); i++) {
-    const prev = new Date(calYear, calMonth, -first.getDay() + i + 1);
-    days.appendChild(makeDayEl(prev, true));
+  // 收集所有要顯示的日期（週一到週六）
+  const allDates = [];
+
+  // 找到第一格應該是哪天（週一）
+  const firstDow = first.getDay(); // 0=日,1=一...6=六
+  const padStart = firstDow === 0 ? 6 : firstDow - 1; // 往前補幾天
+
+  // 補前面的日期（上個月）
+  for (let i = padStart; i > 0; i--) {
+    const d = new Date(calYear, calMonth, 1 - i);
+    if (d.getDay() !== 0) allDates.push({ date: d, other: true });
   }
+
+  // 本月日期
   for (let d = 1; d <= last.getDate(); d++) {
-    days.appendChild(makeDayEl(new Date(calYear, calMonth, d), false));
+    const date = new Date(calYear, calMonth, d);
+    if (date.getDay() !== 0) allDates.push({ date, other: false });
   }
-  // Pad end
-  const remaining = 42 - (first.getDay() + last.getDate());
-  for (let i = 1; i <= remaining; i++) {
-    days.appendChild(makeDayEl(new Date(calYear, calMonth + 1, i), true));
+
+  // 補後面（下個月）到填滿6的倍數
+  let nextDay = 1;
+  while (allDates.length % 6 !== 0) {
+    const d = new Date(calYear, calMonth + 1, nextDay++);
+    if (d.getDay() !== 0) allDates.push({ date: d, other: true });
   }
+
+  allDates.forEach(({ date, other }) => days.appendChild(makeDayEl(date, other)));
 
   renderCalList();
 }
@@ -1416,72 +1439,102 @@ function renderPatientList() {
 // ── IMAGES ──
 let currentDetailId = null;
 
-// 圖片改存 indexedDB，不佔 localStorage 空間
-const IMG_DB_NAME = 'cl-images';
-const IMG_DB_VER = 1;
-let imgDB = null;
+// ── 圖片：壓縮後存 localStorage（Safari PWA 相容）──
+const IMG_PREFIX = 'cl-img-';
+const MAX_IMG_SIZE = 300; // px，壓縮到最大 300x300
+const IMG_QUALITY = 0.6;
 
-function openImgDB() {
-  return new Promise((resolve, reject) => {
-    if (imgDB) { resolve(imgDB); return; }
-    const req = indexedDB.open(IMG_DB_NAME, IMG_DB_VER);
-    req.onupgradeneeded = e => e.target.result.createObjectStore('images', { keyPath: 'key' });
-    req.onsuccess = e => { imgDB = e.target.result; resolve(imgDB); };
-    req.onerror = () => reject(req.error);
-  });
+function imgKey(patientId, idx) { return IMG_PREFIX + patientId + '_' + idx; }
+
+function saveImgToStorage(key, dataURL) {
+  try { localStorage.setItem(key, dataURL); return true; }
+  catch(e) { console.warn('Storage full:', e); return false; }
 }
 
-function imgKey(patientId, idx) { return `${patientId}_${idx}`; }
-
-async function saveImageToDB(key, dataURL) {
-  const db = await openImgDB();
-  return new Promise((res, rej) => {
-    const tx = db.transaction('images', 'readwrite');
-    tx.objectStore('images').put({ key, data: dataURL });
-    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
-  });
+function loadImgFromStorage(key) {
+  return localStorage.getItem(key);
 }
 
-async function loadImageFromDB(key) {
-  const db = await openImgDB();
-  return new Promise((res, rej) => {
-    const req = db.transaction('images').objectStore('images').get(key);
-    req.onsuccess = () => res(req.result ? req.result.data : null);
-    req.onerror = () => rej(req.error);
-  });
+function deleteImgFromStorage(key) {
+  localStorage.removeItem(key);
 }
 
-async function deleteImageFromDB(key) {
-  const db = await openImgDB();
-  return new Promise((res, rej) => {
-    const tx = db.transaction('images', 'readwrite');
-    tx.objectStore('images').delete(key);
-    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
-  });
-}
-
-// 壓縮圖片到最大 800px、品質 0.75
 function compressImage(file) {
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX = 800;
-        let w = img.width, h = img.height;
+  return new Promise(function(resolve) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var MAX = MAX_IMG_SIZE;
+        var w = img.width, h = img.height;
         if (w > MAX || h > MAX) {
           if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
           else { w = Math.round(w * MAX / h); h = MAX; }
         }
-        const canvas = document.createElement('canvas');
+        var canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.75));
+        resolve(canvas.toDataURL('image/jpeg', IMG_QUALITY));
       };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   });
+}
+
+function uploadImages(event) {
+  var files = Array.from(event.target.files);
+  if (!files.length) return;
+  var p = patients.find(function(x) { return x.id === currentDetailId; });
+  if (!p) return;
+  if (!p.images) p.images = [];
+
+  showToast('⏳ 上傳中...');
+  var total = files.length;
+  var done = 0;
+  var failed = 0;
+
+  files.forEach(function(file) {
+    compressImage(file).then(function(compressed) {
+      var meta = { name: file.name, uploadedAt: new Date().toISOString() };
+      var idx = p.images.length;
+      var key = imgKey(p.id, idx);
+      var ok = saveImgToStorage(key, compressed);
+      if (ok) {
+        p.images.push(meta);
+      } else {
+        failed++;
+      }
+      done++;
+      if (done === total) {
+        save();
+        renderDetailImages(p);
+        if (failed > 0) showToast('⚠️ ' + failed + ' 張圖片因空間不足無法儲存');
+        else showToast('✅ 已上傳 ' + (total - failed) + ' 張圖片');
+      }
+    });
+  });
+  event.target.value = '';
+}
+
+function renderDetailImages(p) {
+  var grid = document.getElementById('detail-images-grid');
+  if (!grid) return;
+  if (!p.images || !p.images.length) { grid.innerHTML = ''; return; }
+
+  grid.innerHTML = p.images.map(function(img, idx) {
+    var src = loadImgFromStorage(imgKey(p.id, idx));
+    if (!src) return '';
+    return '<div style="position:relative;display:inline-block">' +
+      '<img src="' + src + '" alt="' + img.name + '"' +
+      ' style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border);cursor:pointer;display:block"' +
+      ' onclick="viewImage(\'' + src + '\',\'' + img.name + '\')"' +
+      ' title="' + img.name + '">' +
+      '<div style="font-size:9px;color:var(--text3);text-align:center;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">' + img.name + '</div>' +
+      '<button onclick="deleteImage(\'' + p.id + '\',' + idx + ')"' +
+      ' style="position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>' +
+      '</div>';
+  }).filter(Boolean).join('');
 }
 
 async function uploadImages(event) {
@@ -1540,34 +1593,30 @@ async function renderDetailImages(p) {
 }
 
 function viewImage(src, name) {
-  const overlay = document.createElement('div');
+  var overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px';
-  overlay.innerHTML = `
-    <img src="${src}" style="max-width:90vw;max-height:80vh;border-radius:10px;object-fit:contain">
-    <div style="color:#fff;font-size:13px;opacity:0.7">${name}</div>
-    <button onclick="this.parentElement.remove()" style="color:#fff;background:rgba(255,255,255,0.15);border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px">✕ 關閉</button>`;
-  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = '<img src="' + src + '" style="max-width:90vw;max-height:80vh;border-radius:10px;object-fit:contain">' +
+    '<div style="color:#fff;font-size:13px;opacity:0.7">' + name + '</div>' +
+    '<button onclick="this.parentElement.remove()" style="color:#fff;background:rgba(255,255,255,0.15);border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px">✕ 關閉</button>';
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
   document.body.appendChild(overlay);
 }
 
-async function deleteImage(patientId, imgIdx) {
-  const p = patients.find(x => x.id === patientId);
+function deleteImage(patientId, imgIdx) {
+  var p = patients.find(function(x) { return x.id === patientId; });
   if (!p || !p.images) return;
-
-  // 刪除 DB 裡的圖片，並重新整理後續 key
-  const oldLen = p.images.length;
+  var oldLen = p.images.length;
   // 刪除目標
-  await deleteImageFromDB(imgKey(patientId, imgIdx));
-  // 後面的 index 往前移
-  for (let i = imgIdx + 1; i < oldLen; i++) {
-    const src = await loadImageFromDB(imgKey(patientId, i));
-    if (src) await saveImageToDB(imgKey(patientId, i - 1), src);
-    await deleteImageFromDB(imgKey(patientId, i));
+  deleteImgFromStorage(imgKey(patientId, imgIdx));
+  // 後面的 key 往前移
+  for (var i = imgIdx + 1; i < oldLen; i++) {
+    var src = loadImgFromStorage(imgKey(patientId, i));
+    if (src) saveImgToStorage(imgKey(patientId, i - 1), src);
+    deleteImgFromStorage(imgKey(patientId, i));
   }
-
   p.images.splice(imgIdx, 1);
   save();
-  await renderDetailImages(p);
+  renderDetailImages(p);
   showToast('🗑️ 已刪除圖片');
 }
 
