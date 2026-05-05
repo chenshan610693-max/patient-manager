@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>隱形眼鏡驗配管理系統</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* ── 主配色 ── */
+    --bg: #F5EFEB;           /* Beige 背景 */
+    --surface: #ffffff;      /* 白色卡片 */
+    --surface2: #EDE8E4;     /* 淺 Beige 次表面 */
+    --border: #D6CCC6;       /* 柔和邊框 */
+
+    --accent: #2F4156;       /* Navy 主色 */
+    --accent2: #4A6580;      /* Navy 淡版（副標、hover） */
+    --accent-light: #E8EEF3; /* Navy 超淡（highlight bg） */
+
+    --green: #5B8FA8;        /* 天空藍（取件、成功） */
+    --green-light: #E4EFF5;  /* 天空藍淡 */
+
+    --orange: #B07D5A;       /* 暖棕（警示） */
+    --orange-light: #F7EDE4; /* 暖棕淡 */
+
+    --red: #B5534A;          /* 暗紅（刪除、錯誤） */
+    --red-light: #F5E8E7;    /* 暗紅淡 */
+
+    --text: #2F4156;         /* Navy 主文字 */
+    --text2: #5C6E7E;        /* 次要文字 */
+    --text3: #9BAAB8;        /* 提示文字 */
+
+    --shadow: 0 2px 16px rgba(47,65,86,0.08);
+    --shadow-lg: 0 8px 40px rgba(47,65,86,0.14);
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── LAYOUT ── */
+  .app { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 100%;
+    background: var(--accent);
+    border-top: none;
+    padding: 0;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    display: flex;
+    flex-direction: row;
+    z-index: 100;
+    height: 62px;
+    box-shadow: 0 -2px 16px rgba(67,97,238,0.07);
+  }
+
+  .logo { display: none; }
+
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px;
+    flex: 1;
+    padding: 8px 4px;
+    cursor: pointer;
+    font-size: 11px; font-weight: 500;
+    color: rgba(203,217,230,0.65);
+    border-top: 3px solid transparent;
+    border-left: none;
+    transition: all 0.18s;
+    user-select: none;
+  }
+  .nav-item:hover { background: rgba(203,217,230,0.15); color: #CBD9E6; }
+  .nav-item.active {
+    color: #ffffff;
+    background: rgba(203,217,230,0.18);
+    border-top-color: #CBD9E6;
+    border-left-color: transparent;
+  }
+  .nav-icon { font-size: 20px; width: auto; text-align: center; }
+
+  .main {
+    margin-left: 0;
+    margin-bottom: 62px;
+    flex: 1;
+    padding: 20px 16px;
+    max-width: 1200px;
+    width: 100%;
+    overflow-x: hidden;
+  }
+  @media (min-width: 640px) {
+    .main { padding: 28px 32px; }
+  }
+
+  /* ── HEADER ── */
+  .page-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 20px; gap: 12px; flex-wrap: wrap;
+  }
+  .page-title { font-size: 22px; font-weight: 700; color: var(--text); }
+  .page-sub { font-size: 13px; color: var(--text3); margin-top: 3px; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 18px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.15s;
+    font-family: inherit;
+  }
+  .btn-primary {
+    background: var(--accent); color: #fff;
+    box-shadow: 0 2px 8px rgba(47,65,86,0.22);
+  }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+  .btn-ghost {
+    background: transparent; color: var(--text2);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--surface2); }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-danger:hover { background: #c8303b; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .card-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-title { font-size: 15px; font-weight: 700; }
+  .card-body { padding: 22px; }
+
+  /* ── TABS ── */
+  .tabs { display: flex; gap: 4px; background: var(--surface2); padding: 4px; border-radius: var(--radius-sm); }
+  .tab {
+    padding: 7px 18px; border-radius: 6px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    color: var(--text2); transition: all 0.15s;
+  }
+  .tab.active { background: var(--surface); color: var(--accent); box-shadow: 0 1px 6px rgba(47,65,86,0.10); font-weight:700; }
+
+  /* ── PAGES ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── QUICK INPUT ── */
+  .quick-input-area {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+    margin-bottom: 24px;
+  }
+  .textarea-wrap { position: relative; }
+  textarea {
+    width: 100%; padding: 14px 16px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-family: 'DM Mono', monospace; font-size: 12.5px;
+    background: var(--surface); color: var(--text);
+    resize: vertical; min-height: 160px;
+    transition: border-color 0.15s; outline: none;
+    line-height: 1.7;
+  }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,65,86,0.08); }
+  .textarea-label {
+    font-size: 12px; font-weight: 600; color: var(--text2);
+    margin-bottom: 7px; display: block;
+  }
+
+  /* ── PARSED PREVIEW ── */
+  .preview-box {
+    background: var(--accent-light); border: 1.5px solid #C5D4E0;
+    border-radius: var(--radius-sm); padding: 16px;
+    font-size: 13px; line-height: 1.9;
+    min-height: 160px;
+  }
+  .preview-row { display: flex; gap: 8px; }
+  .preview-key { color: var(--text3); font-size: 12px; min-width: 72px; font-family: 'DM Mono', monospace; }
+  .preview-val { color: var(--text); font-weight: 500; }
+  .preview-empty { color: var(--text3); font-size: 13px; padding-top: 50px; text-align: center; }
+
+  /* ── FORM ── */
+  .form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  @media (min-width: 640px) {
+    .form-grid { grid-template-columns: 1fr 1fr; }
+    .form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  }
+  label { font-size: 12px; font-weight: 600; color: var(--text2); }
+  input, select {
+    padding: 9px 13px; border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); font-size: 13px;
+    background: var(--surface); color: var(--text);
+    outline: none; transition: border-color 0.15s;
+    font-family: inherit;
+  }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,65,86,0.08); }
+  .lens-section {
+    background: var(--surface2); border-radius: var(--radius-sm);
+    padding: 14px; margin-bottom: 14px;
+  }
+  .lens-section-title {
+    font-size: 11px; font-weight: 700; color: var(--text3);
+    letter-spacing: 0.08em; margin-bottom: 10px; text-transform: uppercase;
+  }
+
+  /* ── CALENDAR ── */
+  .cal-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .cal-month { font-size: 18px; font-weight: 700; }
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+  .cal-weekday {
+    text-align: center; font-size: 11px; font-weight: 700;
+    color: var(--text3); padding-bottom: 8px; letter-spacing: 0.05em;
+  }
+  .cal-day {
+    min-height: 80px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    padding: 6px; background: var(--surface);
+    cursor: pointer; transition: all 0.15s; position: relative;
+  }
+  .cal-day:hover { border-color: var(--accent); background: var(--accent-light); }
+  .cal-day.today { border-color: var(--accent); background: var(--accent-light); box-shadow: 0 0 0 2px rgba(47,65,86,0.12); }
+  .cal-day.other-month { opacity: 0.35; }
+  .cal-day-num {
+    font-size: 12px; font-weight: 600; color: var(--text2);
+    margin-bottom: 4px;
+  }
+  .cal-day.today .cal-day-num { color: var(--accent); }
+  .cal-event {
+    font-size: 10px; padding: 2px 5px; border-radius: 4px;
+    margin-bottom: 2px; cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-weight: 500;
+  }
+  .cal-event.fitting { background: var(--accent-light); color: var(--accent); }
+  .cal-event.pickup { background: var(--green-light); color: #1a9e94; }
+
+  /* ── PATIENT LIST ── */
+  .search-bar {
+    display: flex; gap: 10px; margin-bottom: 18px; align-items: center;
+  }
+  .search-input-wrap { position: relative; flex: 1; }
+  .search-input-wrap input { width: 100%; padding-left: 36px; }
+  .search-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 15px; color: var(--text3);
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left; font-size: 11px; font-weight: 700;
+    color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 10px 14px; border-bottom: 2px solid var(--border);
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:hover { background: var(--accent-light); }
+  tbody td { padding: 12px 14px; font-size: 13px; }
+  .badge {
+    display: inline-block; padding: 3px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+  }
+  .badge-blue { background: var(--accent-light); color: var(--accent); font-weight:600; }
+  .badge-green { background: var(--green-light); color: var(--green); font-weight:600; }
+  .badge-orange { background: var(--orange-light); color: var(--orange); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(26,29,46,0.45); z-index: 200;
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(3px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    width: 90%; max-width: 620px; max-height: 90vh;
+    overflow-y: auto; animation: modalIn 0.2s ease;
+  }
+  @keyframes modalIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal-header {
+    padding: 20px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; background: var(--surface); z-index: 1;
+  }
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-body { padding: 22px 24px; }
+  .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+  .close-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 20px; color: var(--text3); line-height: 1;
+  }
+
+  /* ── DETAIL MODAL ── */
+  .detail-section { margin-bottom: 20px; }
+  .detail-section-title {
+    font-size: 11px; font-weight: 700; color: var(--text3);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 10px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .detail-item { }
+  .detail-label { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
+  .detail-value { font-size: 14px; font-weight: 500; color: var(--text); }
+  .detail-value.mono { font-family: 'DM Mono', monospace; font-size: 13px; }
+
+  /* ── STATS ── */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .stat-num { font-size: 28px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 28px; right: 28px;
+    background: var(--text); color: #fff;
+    padding: 12px 20px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 999; opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.25s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+    color: var(--text3); font-size: 14px;
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+  .note-area { width: 100%; min-height: 70px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #C5D4E0; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="app" style="flex-direction:column">
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <div>
+          <div class="page-title">總覽</div>
+          <div class="page-sub" id="today-date"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="backupCSV()" title="匯出所有資料備份">💾 備份</button>
+          <button class="btn btn-primary" onclick="showPage('input')">➕ 新增</button>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-num" id="stat-total">0</div>
+          <div class="stat-label">總患者數</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-today-pickup">0</div>
+          <div class="stat-label">今日取件</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-today-fitting">0</div>
+          <div class="stat-label">今日驗配</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-week">0</div>
+          <div class="stat-label">本週預約</div>
+        </div>
+      </div>
+
+      <!-- TODAY'S SCHEDULE -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📋 近期排程</span>
+          <button class="btn btn-ghost btn-sm" onclick="showPage('calendar')">查看行事曆</button>
+        </div>
+        <div class="card-body">
+          <div id="upcoming-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INPUT PAGE -->
+    <div id="page-input" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">新增 / 更新患者</div>
+        </div>
+        <div class="tabs">
+          <div class="tab active" id="tab-book" onclick="switchInputMode('book',this)">📅 預約登記</div>
+          <div class="tab" id="tab-rx" onclick="switchInputMode('rx',this)">💊 貼上處方</div>
+        </div>
+      </div>
+
+      <!-- MODE A：預約登記 -->
+      <div id="input-book-mode">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">預約基本資料</span>
+            <span style="font-size:12px;color:var(--text3)">填完後顯示於行事曆</span>
+          </div>
+          <div class="card-body">
+            <div class="form-grid" style="margin-bottom:14px">
+              <div class="form-group">
+                <label>患者姓名 *</label>
+                <input id="bk-name" type="text" placeholder="林庭萱"
+                  oninput="checkBookDuplicate()">
+              </div>
+              <div class="form-group">
+                <label>聯絡電話</label>
+                <input id="bk-phone" type="text" placeholder="0919321824">
+              </div>
+              <div class="form-group">
+                <label>病例號</label>
+                <input id="bk-case" type="text" placeholder="病例號">
+              </div>
+              <div class="form-group">
+                <label>醫院</label>
+                <input id="bk-hospital" type="text" placeholder="土城長庚">
+              </div>
+              <div class="form-group">
+                <label>醫師</label>
+                <input id="bk-doctor" type="text" placeholder="林睿彥醫師">
+              </div>
+              <div class="form-group">
+                <label>預約日期時間</label>
+                <input id="bk-appt" type="datetime-local">
+              </div>
+              <div class="form-group full">
+                <label>備注</label>
+                <textarea id="bk-note" class="note-area" placeholder="備注事項..."></textarea>
+              </div>
+            </div>
+            <!-- 重複提示 -->
+            <div id="book-dup-alert" style="display:none;background:var(--orange-light);border:1.5px solid var(--orange);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px">
+              <div style="font-weight:600;color:var(--orange);margin-bottom:4px">⚠️ 找到同名患者</div>
+              <div id="book-dup-list"></div>
+              <div style="margin-top:8px;font-size:12px;color:var(--text2)">儲存時會更新現有患者的預約時間，不會重複建立。</div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end">
+              <button class="btn btn-ghost" onclick="clearBookForm()">清除</button>
+              <button class="btn btn-primary" onclick="saveBooking()">📅 儲存預約</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODE B：貼上處方 -->
+      <div id="input-rx-mode" style="display:none">
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">
+            <span class="card-title">① 貼上處方資訊</span>
+            <span style="font-size:12px;color:var(--text3)">支援一次多筆，自動比對現有患者</span>
+          </div>
+          <div class="card-body">
+            <textarea id="raw-input" style="min-height:200px;font-size:13px;line-height:1.8"
+              placeholder="可一次貼多筆，例如：&#10;&#10;台北馬偕 莊怡群醫師&#10;高乾舜 0988908882&#10;Myok Pro&#10;OD 散 -6.25/44.25/44.75/10.6&#10;附包包&#10;2026/05/13 16:00"
+              oninput="parseRaw()"></textarea>
+            <div style="display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-primary" onclick="saveAllParsed()" id="btn-confirm-parse" style="opacity:0.4;pointer-events:none">✅ 全部儲存／更新</button>
+              <button class="btn btn-ghost" onclick="resetInput()">清除</button>
+              <span style="font-size:12px;color:var(--text3);margin-left:4px" id="parse-hint">貼上資訊後自動解析</span>
+            </div>
+          </div>
+        </div>
+        <div id="multi-confirm-area"></div>
+      </div>
+
+    </div>
+
+    <!-- CALENDAR PAGE -->
+    <div id="page-calendar" class="page">
+      <div class="page-header">
+        <div class="page-title">📅 行事曆</div>
+        <div class="tabs">
+          <div class="tab active" onclick="switchCalView('month',this)">月</div>
+          <div class="tab" onclick="switchCalView('list',this)">清單</div>
+        </div>
+      </div>
+
+      <div id="cal-month-view">
+        <div class="card">
+          <div class="card-header">
+            <button class="btn btn-ghost btn-sm" onclick="changeMonth(-1)">‹ 上個月</button>
+            <span class="cal-month" id="cal-month-label"></span>
+            <button class="btn btn-ghost btn-sm" onclick="changeMonth(1)">下個月 ›</button>
+          </div>
+          <div class="card-body">
+            <div class="cal-grid" id="cal-weekdays"></div>
+            <div class="cal-grid" id="cal-days" style="margin-top:0"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:14px;margin-top:12px;font-size:12px;color:var(--text2)">
+          <span>🔵 <span style="color:var(--accent)">驗配</span></span>
+          <span>🟢 <span style="color:#1a9e94">取件</span></span>
+        </div>
+      </div>
+
+      <div id="cal-list-view" style="display:none">
+        <div class="card">
+          <div class="card-header"><span class="card-title">所有排程（時間順序）</span></div>
+          <div class="card-body" id="cal-list-body"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PATIENTS PAGE -->
+    <div id="page-patients" class="page">
+      <div class="page-header">
+        <div class="page-title">🗃️ 患者資料庫</div>
+        <button class="btn btn-primary" onclick="showPage('input')">➕ 新增</button>
+      </div>
+      <div class="card">
+        <div class="card-body" style="padding-bottom:0">
+          <div class="search-bar">
+            <div class="search-input-wrap">
+              <span class="search-icon">🔍</span>
+              <input id="search-input" type="text" placeholder="搜尋患者姓名、醫院、醫師..." oninput="renderPatientList()">
+            </div>
+            <select id="filter-hospital" onchange="renderPatientList()" style="min-width:130px">
+              <option value="">所有醫院</option>
+            </select>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>患者姓名</th>
+                <th>電話</th>
+                <th>醫院</th>
+                <th>醫師</th>
+                <th>驗配日期</th>
+                <th>取件日期</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="patient-tbody"></tbody>
+          </table>
+          <div id="patient-empty" class="empty-state" style="display:none">
+            <div class="empty-icon">🔍</div>
+            沒有找到符合的患者
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPORT PAGE -->
+    <div id="page-export" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">📊 匯出報表</div>
+          <div class="page-sub">篩選、分析、匯出 Excel</div>
+        </div>
+      </div>
+
+      <!-- 篩選區 -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><span class="card-title">🔽 篩選條件</span><span id="export-count" style="font-size:12px;color:var(--text3)"></span></div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px">
+            <div class="form-group">
+              <label>醫院院區</label>
+              <select id="ex-hospital" onchange="renderExportPreview()"><option value="">全部醫院</option></select>
+            </div>
+            <div class="form-group">
+              <label>醫師</label>
+              <select id="ex-doctor" onchange="renderExportPreview()"><option value="">全部醫師</option></select>
+            </div>
+            <div class="form-group">
+              <label>鏡片品牌／類型</label>
+              <select id="ex-brand" onchange="renderExportPreview()">
+                <option value="">全部</option>
+                <option value="ortho">塑形片（全部）</option>
+                <option value="specialty">特殊片（全部）</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>鏡片形狀</label>
+              <select id="ex-shape" onchange="renderExportPreview()">
+                <option value="">全部</option>
+                <option value="球面">球面</option>
+                <option value="散光">散光</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>TP 度數（起）</label>
+              <input id="ex-tp-from" type="number" step="0.25" placeholder="-6.00" oninput="renderExportPreview()">
+            </div>
+            <div class="form-group">
+              <label>TP 度數（迄）</label>
+              <input id="ex-tp-to" type="number" step="0.25" placeholder="-1.00" oninput="renderExportPreview()">
+            </div>
+            <div class="form-group">
+              <label>取件日期（起）</label>
+              <input id="ex-date-from" type="date" oninput="renderExportPreview()">
+            </div>
+            <div class="form-group">
+              <label>取件日期（迄）</label>
+              <input id="ex-date-to" type="date" oninput="renderExportPreview()">
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="exportExcel()">⬇️ 匯出 Excel</button>
+            <button class="btn btn-ghost" onclick="resetExportFilters()">重設</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 統計摘要 -->
+      <div id="export-stats" style="margin-bottom:16px"></div>
+
+      <!-- 預覽表格 -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">預覽</span>
+          <div class="tabs" style="scale:0.9;transform-origin:right">
+            <div class="tab active" onclick="switchExportTab('list',this)">清單</div>
+            <div class="tab" onclick="switchExportTab('tp-dist',this)">度數分佈</div>
+            <div class="tab" onclick="switchExportTab('brand-dist',this)">品牌統計</div>
+          </div>
+        </div>
+        <div id="export-list-view">
+          <div id="export-cards" style="padding:16px;display:flex;flex-direction:column;gap:10px"></div>
+          <div id="export-empty" class="empty-state" style="display:none">
+            <div class="empty-icon">📭</div>沒有符合條件的資料
+          </div>
+          <table id="export-tbody-table" style="display:none"><tbody id="export-tbody"></tbody></table>
+        </div>
+        <div id="export-tp-dist-view" style="display:none">
+          <div class="card-body" id="tp-dist-body"></div>
+        </div>
+        <div id="export-brand-dist-view" style="display:none">
+          <div class="card-body" id="brand-dist-body"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+  <!-- SIDEBAR (bottom nav) -->
+  <aside class="sidebar">
+    <div class="nav-item active" onclick="showPage('dashboard')">
+      <span class="nav-icon">🏠</span> 總覽
+    </div>
+    <div class="nav-item" onclick="showPage('input')">
+      <span class="nav-icon">➕</span> 新增患者
+    </div>
+    <div class="nav-item" onclick="showPage('calendar')">
+      <span class="nav-icon">📅</span> 行事曆
+    </div>
+    <div class="nav-item" onclick="showPage('patients')">
+      <span class="nav-icon">🗃️</span> 患者資料庫
+    </div>
+    <div class="nav-item" onclick="showPage('export')">
+      <span class="nav-icon">📊</span> 匯出報表
+    </div>
+  </aside>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="detail-modal-title">患者詳情</span>
+      <button class="close-btn" onclick="closeModal('detail-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="detail-modal-body"></div>
+    <!-- 圖片區 -->
+    <div style="padding:0 24px 16px">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;padding-top:10px;border-top:1px solid var(--border)">📷 影像記錄（角膜地形圖、驗配紀錄等）</div>
+      <div id="detail-images-grid" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px"></div>
+      <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px dashed var(--border);border-radius:8px;font-size:12px;color:var(--text3);transition:all 0.15s"
+        onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">
+        ➕ 上傳圖片
+        <input type="file" accept="image/*" multiple style="display:none" onchange="uploadImages(event)">
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="detail-delete-btn">🗑️ 刪除</button>
+      <button class="btn btn-ghost" onclick="closeModal('detail-modal')">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="modal-overlay" id="delete-confirm-modal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <span class="modal-title">確認刪除</span>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text2);line-height:1.7">確定要刪除這筆患者資料嗎？<br><span style="color:var(--red);font-weight:600">此操作無法復原。</span></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('delete-confirm-modal')">取消</button>
+      <button class="btn btn-danger" id="confirm-delete-btn">🗑️ 確認刪除</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ──
+let patients = JSON.parse(localStorage.getItem('cl-patients') || '[]');
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let parsedData = {};
+let editingId = null;
+
+function save() {
+  localStorage.setItem('cl-patients', JSON.stringify(patients));
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+// ── NAVIGATION ──
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  const navMap = { dashboard: 0, input: 1, calendar: 2, patients: 3, export: 4 };
+  document.querySelectorAll('.nav-item')[navMap[name]].classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'calendar') renderCalendar();
+  if (name === 'patients') { renderPatientList(); renderHospitalFilter(); }
+  if (name === 'export') { initExportFilters(); renderExportPreview(); }
+}
+
+// ── PARSE ──
+
+// 鏡片類型判斷
+const ORTHO_K_DESIGNS = /Hiline|HiLine|myok|MyOK|DK180|DK140|DK82|塑形/i;
+const SPECIALTY_BRANDS = /Soclear|Ampleye|HLK|BIT|RGP|Menicon|Boston|Rose.?K|Scleroflex|EyePrint|NaturalVue/i;
+const LENS_BRANDS = /Hiline|HiLine|myok|MyOK|DK180|DK140|DK82|塑形|Soclear|Ampleye|HLK|BIT|RGP|Menicon|Boston|Rose.?K|Scleroflex|EyePrint|NaturalVue/i;
+const IGNORE_NOTES = /附包包|附盒|附鏡盒|不附盒|不附包|無盒|含盒|without case|with case/i;
+
+function isOrthoK(brand) { return brand && ORTHO_K_DESIGNS.test(brand); }
+function isSpecialty(brand) { return brand && SPECIALTY_BRANDS.test(brand); }
+
+// 清除 emoji 等干擾字元
+function cleanLine(line) {
+  return line.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{1F300}-\u{1F9FF}]/gu, '').trim();
+}
+
+// 把整數度數格式轉成小數（-250 → -2.50, -175 → -1.75）
+function normalizeTP(v) {
+  const n = parseFloat(v);
+  if (isNaN(n)) return null;
+  // 已經是小數格式
+  if (Math.abs(n) <= 20) return n;
+  // 整數格式：絕對值在 25~2000 之間，視為 /100
+  if (Math.abs(n) >= 25 && Math.abs(n) <= 2000 && Number.isInteger(n)) return n / 100;
+  return null;
+}
+
+// 分類一個數值
+function classifyOrthoValue(v) {
+  const n = parseFloat(v);
+  if (isNaN(n)) return null;
+  if (n >= 3500 && n <= 5500) return 'flatK';
+  if (n >= 7.0 && n <= 13.0) return 'dia';
+  if (n <= 0 && n >= -20) return 'tp';           // 小數 TP（-2.25）
+  if (n === 0) return 'tp';                        // plano
+  // 整數 TP（-250 = -2.50）
+  if (n < 0 && Math.abs(n) >= 25 && Math.abs(n) <= 2000) return 'tpInt';
+  return null;
+}
+
+function parseOrthoLine(line) {
+  const clean = cleanLine(line);
+  const eyeMatch = clean.match(/^(OD|OS)\s*/i);
+  if (!eyeMatch) return null;
+  const eye = eyeMatch[1].toUpperCase();
+  let rest = clean.slice(eyeMatch[0].length).trim();
+
+  // 抓 myok 參數 (AZE0.55 pd1.5 oz6.0 等)
+  const myokParams = [];
+  rest = rest.replace(/(?<![\/\d])\b([A-Za-z]{1,4}[\d.]+)\b/g, (m) => {
+    if (/^\d/.test(m)) return m;
+    myokParams.push(m); return '';
+  }).trim();
+
+  // 抓顏色詞（藍、綠、紫）和類型詞（球面、散光），支援任意順序
+  let lensColor = '';
+  let lensShape = '';
+  // 反覆抓，因為可能是「藍 球」或「球 藍」
+  for (let i = 0; i < 3; i++) {
+    const colorMatch = rest.match(/^(藍|綠|紫)\s*/);
+    if (colorMatch) { lensColor = colorMatch[1]; rest = rest.slice(colorMatch[0].length); continue; }
+    const shapeMatch = rest.match(/^(球面?|散光?)\s*/);
+    if (shapeMatch) { lensShape = shapeMatch[1]; rest = rest.slice(shapeMatch[0].length); continue; }
+    break;
+  }
+
+  // 分割數字段
+  const segments = rest.split(/[\/\s]+/).map(s => s.trim()).filter(s => /^[-+]?[\d.]+$/.test(s));
+
+  const flatKs = [], tps = [], dias = [];
+  segments.forEach(s => {
+    const c = classifyOrthoValue(s);
+    if (c === 'flatK') flatKs.push(s);
+    else if (c === 'tp') tps.push(s);
+    else if (c === 'tpInt') {
+      // 轉成小數顯示
+      const converted = (parseFloat(s) / 100).toFixed(2);
+      tps.push(converted);
+    }
+    else if (c === 'dia') dias.push(s);
+  });
+
+  if (!flatKs.length && !tps.length && !dias.length) return null;
+
+  const params = {};
+  // 類型：優先用明確標記，否則看 flatK 數量推斷
+  const shapeLabel = lensShape
+    ? (lensShape.startsWith('球') ? '球面' : '散光')
+    : (flatKs.length >= 2 ? '散光' : '球面');
+  params['類型'] = shapeLabel;
+  if (flatKs[0]) params['平K'] = flatKs[0];
+  if (flatKs[1]) params['陡K'] = flatKs[1];
+  if (tps.length) params['TP'] = tps[0];
+  if (dias[0]) params['直徑'] = dias[0];
+  if (lensColor) params['顏色'] = lensColor;
+  if (myokParams.length) params['其他參數'] = myokParams.join(' ');
+
+  return { eye, raw: clean, params, isOrthoK: true };
+}
+
+function parseSpecialtyLine(line) {
+  const clean = cleanLine(line);
+  const eyeMatch = clean.match(/^(OD|OS)\s*/i);
+  if (!eyeMatch) return null;
+  const eye = eyeMatch[1].toUpperCase();
+  return { eye, raw: clean, params: { '處方': clean.slice(eyeMatch[0].length).trim() }, isOrthoK: false };
+}
+
+function parseLensLine(line, brand) {
+  if (!/(OD|OS)/i.test(line)) return null;
+  if (isOrthoK(brand)) return parseOrthoLine(line);
+  if (isSpecialty(brand)) return parseSpecialtyLine(line);
+  return parseOrthoLine(line) || parseSpecialtyLine(line);
+}
+
+// ── 分段解析（支援一次多筆） ──
+function splitIntoBlocks(raw) {
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  const blocks = [];
+  let current = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = cleanLine(lines[i]);
+    // 新區塊開頭：「xxx醫院 xxx醫師」
+    const isHeader = line.match(/^[\u4e00-\u9fa5a-zA-Z\s]+醫師/) && !/(OD|OS)/i.test(line);
+    if (isHeader && current.length > 0) {
+      blocks.push(current);
+      current = [];
+    }
+    current.push(lines[i]);
+  }
+  if (current.length) blocks.push(current);
+  return blocks;
+}
+
+function parseBlock(lines) {
+  const raw = lines.join('\n');
+  const result = { hospital:'', doctor:'', name:'', phone:'', brand:'', dk:'', urgent:false,
+    odRaw:'', odParams:null, odIsOrthoK:false,
+    osRaw:'', osParams:null, osIsOrthoK:false,
+    pickupDate:'', fittingDate:'', note:'', caseNo:'' };
+  const usedLines = new Set();
+
+  // 1. 醫院 & 醫師（允許 emoji 前後）
+  lines.forEach((line, i) => {
+    const clean = cleanLine(line);
+    const m = clean.match(/^(.+?)\s+(.+醫師)/);
+    if (m) { result.hospital = m[1].trim(); result.doctor = m[2].trim(); usedLines.add(i); }
+  });
+
+  // 2. 姓名 & 電話（允許後面有 emoji/數字 標記）
+  lines.forEach((line, i) => {
+    if (usedLines.has(i)) return;
+    const clean = cleanLine(line);
+    const m = clean.match(/^([\u4e00-\u9fa5]{2,5})\s+(09\d{8}|\d{10})/);
+    if (m) { result.name = m[1]; result.phone = m[2]; usedLines.add(i); }
+  });
+
+  // 3. 品牌行
+  lines.forEach((line, i) => {
+    if (usedLines.has(i)) return;
+    const clean = cleanLine(line);
+    if (LENS_BRANDS.test(clean) && !/(OD|OS)/i.test(clean)) {
+      result.brand = clean; usedLines.add(i);
+    }
+  });
+
+  // 4. 急件
+  lines.forEach((line, i) => {
+    if (/急件|緊急|urgent/i.test(line)) { result.urgent = true; usedLines.add(i); }
+  });
+
+  // 5. 鏡片行
+  lines.forEach((line, i) => {
+    if (usedLines.has(i)) return;
+    const r = parseLensLine(line, result.brand);
+    if (r) {
+      usedLines.add(i);
+      if (r.eye === 'OD') { result.odRaw = r.raw; result.odParams = r.params; result.odIsOrthoK = r.isOrthoK; }
+      else { result.osRaw = r.raw; result.osParams = r.params; result.osIsOrthoK = r.isOrthoK; }
+    }
+  });
+
+  // 6. 日期
+  lines.forEach((line, i) => {
+    if (usedLines.has(i)) return;
+    const wt = line.match(/(\d{4}\/\d{2}\/\d{2})\s+(\d{1,2}:\d{2})/);
+    if (wt) { result.pickupDate = wt[1] + ' ' + wt[2]; usedLines.add(i); return; }
+    const do_ = line.match(/(\d{4}\/\d{2}\/\d{2})/);
+    if (do_) { result.pickupDate = do_[1]; usedLines.add(i); }
+  });
+
+  // 7. Dk
+  const dkM = raw.match(/[Dd][Kk]\s*(\d+)/);
+  if (dkM) result.dk = 'Dk' + dkM[1];
+
+  // 8. 備注
+  const notes = lines.filter((l,i) => !usedLines.has(i) && l.length > 0 && !IGNORE_NOTES.test(l));
+  if (notes.length) result.note = notes.join('、');
+
+  return result;
+}
+
+// 所有已解析的區塊
+let parsedBlocks = [];
+
+function parseRaw() {
+  const raw = document.getElementById('raw-input').value.trim();
+  parsedBlocks = [];
+  const btn = document.getElementById('btn-confirm-parse');
+  const hint = document.getElementById('parse-hint');
+  const area = document.getElementById('multi-confirm-area');
+
+  if (!raw) {
+    btn.style.opacity = '0.4'; btn.style.pointerEvents = 'none';
+    hint.textContent = '貼上資訊後自動解析';
+    area.innerHTML = '';
+    return;
+  }
+
+  const blocks = splitIntoBlocks(raw);
+  parsedBlocks = blocks.map(b => parseBlock(b));
+
+  btn.style.opacity = '1'; btn.style.pointerEvents = '';
+  hint.textContent = `✨ 偵測到 ${parsedBlocks.length} 筆患者`;
+
+  renderMultiConfirm();
+}
+
+// 找同名患者（姓名完全相符）
+function findExisting(name, hospital, doctor) {
+  if (!name) return null;
+  // 先找同名+同醫院+同醫師
+  let match = patients.find(p => p.name === name && p.hospital === hospital && p.doctor === doctor);
+  if (match) return match;
+  // 再找同名+同醫院
+  match = patients.find(p => p.name === name && p.hospital === hospital);
+  if (match) return match;
+  // 最後找同名
+  match = patients.find(p => p.name === name);
+  return match || null;
+}
+
+function renderMultiConfirm() {
+  const area = document.getElementById('multi-confirm-area');
+  if (!parsedBlocks.length) { area.innerHTML = ''; return; }
+
+  area.innerHTML = parsedBlocks.map((p, idx) => {
+    const existing = findExisting(p.name, p.hospital, p.doctor);
+    const isUpdate = !!existing;
+    const borderColor = isUpdate ? 'var(--green)' : 'var(--accent)';
+    const bgColor = isUpdate ? 'var(--green-light)' : 'var(--accent-light)';
+    const label = isUpdate
+      ? `<span style="background:var(--green-light);color:#1a9e94;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px">🔄 更新現有患者</span>`
+      : `<span style="background:var(--accent-light);color:var(--accent);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px">✨ 新建</span>`;
+
+    return `
+    <div class="card" style="margin-bottom:16px;border:2px solid ${borderColor}">
+      <div class="card-header" style="background:${bgColor}">
+        <span class="card-title">
+          ${p.name || '⚠️未辨識'}${label}
+        </span>
+        <span style="font-size:12px;color:var(--text3)">${p.hospital||''} ${p.doctor||''}</span>
+      </div>
+      <div class="card-body" style="padding:14px 20px">
+        ${isUpdate ? `<div style="font-size:12px;color:#1a9e94;margin-bottom:10px;padding:6px 10px;background:var(--green-light);border-radius:6px">
+          ✅ 將更新「${existing.name}」的處方與取件日期，保留原有預約時間與病例號
+        </div>` : ''}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+          <div><span style="color:var(--text3);font-size:11px">電話</span><br><b>${p.phone||'—'}</b></div>
+          <div><span style="color:var(--text3);font-size:11px">品牌</span><br><b style="color:var(--accent2)">${p.brand||'—'}</b>${p.dk ? ` <span class="badge badge-green">${p.dk}</span>` : ''}</div>
+          <div style="grid-column:1/-1"><span style="color:var(--text3);font-size:11px">OD</span><br><span style="font-family:'DM Mono',monospace;font-size:12px">${p.odRaw||'—'}</span></div>
+          <div style="grid-column:1/-1"><span style="color:var(--text3);font-size:11px">OS</span><br><span style="font-family:'DM Mono',monospace;font-size:12px">${p.osRaw||'—'}</span></div>
+          <div><span style="color:var(--text3);font-size:11px">取件日期</span><br><b>${p.pickupDate||'—'}</b></div>
+          ${p.note ? `<div><span style="color:var(--text3);font-size:11px">備注</span><br>${p.note}</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toISO(dateStr) {
+  if (!dateStr) return '';
+  const hasTime = /\d{4}\/\d{2}\/\d{2} \d{1,2}:\d{2}/.test(dateStr);
+  return hasTime
+    ? dateStr.replace(/\//g,'-').replace(' ','T')
+    : dateStr.replace(/\//g,'-') + 'T09:00';
+}
+
+function saveAllParsed() {
+  if (!parsedBlocks.length) return;
+  let created = 0, updated = 0;
+
+  parsedBlocks.forEach(p => {
+    if (!p.name) return;
+    const pickupISO = toISO(p.pickupDate);
+    const existing = findExisting(p.name, p.hospital, p.doctor);
+
+    if (existing) {
+      // 更新：保留原有的 id、caseNo、fittingDate（預約時間）、images
+      existing.phone    = p.phone    || existing.phone;
+      existing.hospital = p.hospital || existing.hospital;
+      existing.doctor   = p.doctor   || existing.doctor;
+      existing.brand    = p.brand    || existing.brand;
+      existing.dk       = p.dk       || existing.dk;
+      existing.od = { raw: p.odRaw||'', params: p.odParams||{}, isOrthoK: p.odIsOrthoK||false };
+      existing.os = { raw: p.osRaw||'', params: p.osParams||{}, isOrthoK: p.osIsOrthoK||false };
+      if (pickupISO) existing.pickupDate = pickupISO;
+      if (p.note) existing.note = p.note;
+      updated++;
+    } else {
+      patients.push({
+        id: uid(), name: p.name, phone: p.phone||'', caseNo: '',
+        hospital: p.hospital||'', doctor: p.doctor||'',
+        brand: p.brand||'', dk: p.dk||'', urgent: p.urgent||false,
+        od: { raw: p.odRaw||'', params: p.odParams||{}, isOrthoK: p.odIsOrthoK||false },
+        os: { raw: p.osRaw||'', params: p.osParams||{}, isOrthoK: p.osIsOrthoK||false },
+        fittingDate: '', pickupDate: pickupISO,
+        note: p.note||'', images: [],
+        createdAt: new Date().toISOString(),
+      });
+      created++;
+    }
+  });
+
+  save();
+  resetInput();
+  const msg = [created && `新建 ${created} 筆`, updated && `更新 ${updated} 筆`].filter(Boolean).join('、');
+  showToast(`✅ ${msg}！`);
+  renderDashboard();
+}
+
+
+function fmtParams(params, isOrthoK) {
+  if (!params) return '—';
+  if (!isOrthoK && params['處方']) return params['處方'];
+  // 塑形片：顏色放最後
+  const ORDER = ['類型','平K','陡K','TP','直徑','SAG','其他參數','周邊','處方','顏色'];
+  const colorMap = { '藍': '#4361ee', '綠': '#2ec4b6', '紫': '#7209b7' };
+  return ORDER.filter(k => params[k] !== undefined && params[k] !== '')
+    .map(k => {
+      if (k === '顏色') {
+        const c = colorMap[params[k]] || 'var(--text)';
+        return `<span style="color:var(--text3);font-size:11px">${k}</span> <b style="color:${c}">${params[k]}</b>`;
+      }
+      return `<span style="color:var(--text3);font-size:11px">${k}</span> <b>${params[k]}</b>`;
+    })
+    .join('　');
+}
+
+function resetInput() {
+  document.getElementById('raw-input').value = '';
+  parsedBlocks = [];
+  document.getElementById('btn-confirm-parse').style.opacity = '0.4';
+  document.getElementById('btn-confirm-parse').style.pointerEvents = 'none';
+  document.getElementById('parse-hint').textContent = '貼上資訊後自動解析';
+  document.getElementById('multi-confirm-area').innerHTML = '';
+}
+
+// ── 輸入模式切換 ──
+function switchInputMode(mode, el) {
+  document.querySelectorAll('#page-input .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('input-book-mode').style.display = mode === 'book' ? '' : 'none';
+  document.getElementById('input-rx-mode').style.display   = mode === 'rx'   ? '' : 'none';
+}
+
+// ── 預約登記 ──
+function checkBookDuplicate() {
+  const name = document.getElementById('bk-name').value.trim();
+  const alert = document.getElementById('book-dup-alert');
+  const list  = document.getElementById('book-dup-list');
+  if (!name) { alert.style.display = 'none'; return; }
+  const matches = patients.filter(p => p.name === name);
+  if (!matches.length) { alert.style.display = 'none'; return; }
+  alert.style.display = '';
+  list.innerHTML = matches.map(p =>
+    `<div style="font-size:13px;padding:4px 0">
+      <b>${p.name}</b>
+      <span style="color:var(--text3);margin-left:8px">${p.hospital||''} ${p.doctor||''}</span>
+      ${p.fittingDate ? `<span class="badge badge-blue" style="margin-left:6px">預約：${new Date(p.fittingDate).toLocaleDateString('zh-TW')}</span>` : ''}
+    </div>`
+  ).join('');
+}
+
+function clearBookForm() {
+  ['bk-name','bk-phone','bk-case','bk-hospital','bk-doctor','bk-appt','bk-note']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('book-dup-alert').style.display = 'none';
+}
+
+function saveBooking() {
+  const name = document.getElementById('bk-name').value.trim();
+  if (!name) { showToast('⚠️ 請填寫患者姓名'); return; }
+
+  const appt     = document.getElementById('bk-appt').value;
+  const hospital = document.getElementById('bk-hospital').value.trim();
+  const doctor   = document.getElementById('bk-doctor').value.trim();
+
+  // 比對現有患者
+  const existing = findExisting(name, hospital, doctor);
+
+  if (existing) {
+    // 更新預約時間及基本資料
+    if (document.getElementById('bk-phone').value)    existing.phone    = document.getElementById('bk-phone').value;
+    if (document.getElementById('bk-case').value)     existing.caseNo   = document.getElementById('bk-case').value;
+    if (hospital)  existing.hospital  = hospital;
+    if (doctor)    existing.doctor    = doctor;
+    if (appt)      existing.fittingDate = appt;
+    if (document.getElementById('bk-note').value) existing.note = document.getElementById('bk-note').value;
+    save();
+    clearBookForm();
+    showToast(`🔄 已更新「${name}」的預約時間！`);
+  } else {
+    patients.push({
+      id: uid(), name,
+      phone:    document.getElementById('bk-phone').value,
+      caseNo:   document.getElementById('bk-case').value,
+      hospital, doctor,
+      brand: '', dk: '', urgent: false,
+      od: { raw:'', params:{}, isOrthoK:false },
+      os: { raw:'', params:{}, isOrthoK:false },
+      fittingDate: appt,
+      pickupDate: '',
+      note: document.getElementById('bk-note').value,
+      images: [],
+      createdAt: new Date().toISOString(),
+    });
+    save();
+    clearBookForm();
+    showToast(`📅 已新增預約：${name}！`);
+  }
+  renderDashboard();
+}
+
+// ── FORM (手動) ──
+function clearForm() {
+  ['f-name','f-phone','f-case','f-hospital','f-doctor',
+   'f-od-type','f-od-bc','f-od-power','f-od-dia',
+   'f-os-type','f-os-bc','f-os-power','f-os-dia',
+   'f-fitting-date','f-pickup-date','f-note'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  editingId = null;
+}
+
+function savePatient() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { showToast('⚠️ 請填寫患者姓名'); return; }
+  const patient = {
+    id: editingId || uid(), name,
+    phone: document.getElementById('f-phone').value,
+    caseNo: document.getElementById('f-case').value,
+    hospital: document.getElementById('f-hospital').value,
+    doctor: document.getElementById('f-doctor').value,
+    brand: '', dk: '', urgent: false,
+    od: { raw:'', params:{}, isOrthoK:false },
+    os: { raw:'', params:{}, isOrthoK:false },
+    fittingDate: document.getElementById('f-fitting-date').value,
+    pickupDate: document.getElementById('f-pickup-date').value,
+    note: document.getElementById('f-note').value,
+    images: [],
+    createdAt: new Date().toISOString(),
+  };
+  if (editingId) {
+    const idx = patients.findIndex(p => p.id === editingId);
+    if (idx > -1) patients[idx] = patient;
+    editingId = null;
+  } else { patients.push(patient); }
+  save(); clearForm();
+  const wrap = document.getElementById('manual-form-wrap');
+  if (wrap) wrap.style.display = 'none';
+  showToast('💾 患者資料已儲存！');
+  renderDashboard();
+}
+
+// ── DASHBOARD ──
+function renderDashboard() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayStr = today.toDateString();
+  const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
+
+  document.getElementById('today-date').textContent = today.toLocaleDateString('zh-TW', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+  document.getElementById('stat-total').textContent = patients.length;
+
+  let todayPickup = 0, todayFitting = 0, weekCount = 0;
+  patients.forEach(p => {
+    if (p.pickupDate && new Date(p.pickupDate).toDateString() === todayStr) todayPickup++;
+    if (p.fittingDate && new Date(p.fittingDate).toDateString() === todayStr) todayFitting++;
+    const dates = [p.pickupDate, p.fittingDate].filter(Boolean).map(d => new Date(d));
+    dates.forEach(d => { if (d >= today && d <= weekEnd) weekCount++; });
+  });
+  document.getElementById('stat-today-pickup').textContent = todayPickup;
+  document.getElementById('stat-today-fitting').textContent = todayFitting;
+  document.getElementById('stat-week').textContent = weekCount;
+
+  // Upcoming list
+  const events = [];
+  patients.forEach(p => {
+    if (p.fittingDate) events.push({ date: new Date(p.fittingDate), label: '驗配', patient: p, type: 'fitting' });
+    if (p.pickupDate) events.push({ date: new Date(p.pickupDate), label: '取件', patient: p, type: 'pickup' });
+  });
+  events.sort((a, b) => a.date - b.date);
+  const upcoming = events.filter(e => e.date >= today).slice(0, 8);
+
+  const el = document.getElementById('upcoming-list');
+  if (!upcoming.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div>暫無近期排程</div>'; return; }
+  el.innerHTML = upcoming.map(e => `
+    <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="width:60px;text-align:center">
+        <div style="font-size:11px;color:var(--text3)">${e.date.toLocaleDateString('zh-TW',{month:'short',day:'numeric'})}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2)">${e.date.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      <span class="badge ${e.type === 'fitting' ? 'badge-blue' : 'badge-green'}">${e.label}</span>
+      <div style="flex:1">
+        <span style="font-weight:600">${e.patient.name}</span>
+        <span style="color:var(--text3);font-size:12px;margin-left:8px">${e.patient.hospital || ''} ${e.patient.doctor || ''}</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="showDetail('${e.patient.id}')">查看</button>
+    </div>
+  `).join('');
+}
+
+// ── CALENDAR ──
+function renderCalendar() {
+  const weekdays = ['日','一','二','三','四','五','六'];
+  const wdEl = document.getElementById('cal-weekdays');
+  wdEl.innerHTML = weekdays.map(d => `<div class="cal-weekday">${d}</div>`).join('');
+
+  document.getElementById('cal-month-label').textContent = `${calYear} 年 ${calMonth + 1} 月`;
+  const first = new Date(calYear, calMonth, 1);
+  const last = new Date(calYear, calMonth + 1, 0);
+  const days = document.getElementById('cal-days');
+  days.innerHTML = '';
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Pad start
+  for (let i = 0; i < first.getDay(); i++) {
+    const prev = new Date(calYear, calMonth, -first.getDay() + i + 1);
+    days.appendChild(makeDayEl(prev, true));
+  }
+  for (let d = 1; d <= last.getDate(); d++) {
+    days.appendChild(makeDayEl(new Date(calYear, calMonth, d), false));
+  }
+  // Pad end
+  const remaining = 42 - (first.getDay() + last.getDate());
+  for (let i = 1; i <= remaining; i++) {
+    days.appendChild(makeDayEl(new Date(calYear, calMonth + 1, i), true));
+  }
+
+  renderCalList();
+}
+
+function makeDayEl(date, otherMonth) {
+  const el = document.createElement('div');
+  el.className = 'cal-day' + (otherMonth ? ' other-month' : '');
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (date.toDateString() === today.toDateString()) el.classList.add('today');
+  el.innerHTML = `<div class="cal-day-num">${date.getDate()}</div>`;
+
+  const ds = date.toDateString();
+  patients.forEach(p => {
+    if (p.fittingDate && new Date(p.fittingDate).toDateString() === ds) {
+      const ev = document.createElement('div');
+      ev.className = 'cal-event fitting';
+      ev.textContent = `🔵 ${p.name}`;
+      ev.onclick = (e) => { e.stopPropagation(); showDetail(p.id); };
+      el.appendChild(ev);
+    }
+    if (p.pickupDate && new Date(p.pickupDate).toDateString() === ds) {
+      const ev = document.createElement('div');
+      ev.className = 'cal-event pickup';
+      ev.textContent = `🟢 ${p.name}`;
+      ev.onclick = (e) => { e.stopPropagation(); showDetail(p.id); };
+      el.appendChild(ev);
+    }
+  });
+  return el;
+}
+
+function changeMonth(dir) { calMonth += dir; if (calMonth > 11) { calMonth = 0; calYear++; } if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); }
+
+function switchCalView(view, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('cal-month-view').style.display = view === 'month' ? '' : 'none';
+  document.getElementById('cal-list-view').style.display = view === 'list' ? '' : 'none';
+}
+
+function renderCalList() {
+  const events = [];
+  patients.forEach(p => {
+    if (p.fittingDate) events.push({ date: new Date(p.fittingDate), label: '驗配', patient: p, type: 'fitting' });
+    if (p.pickupDate) events.push({ date: new Date(p.pickupDate), label: '取件', patient: p, type: 'pickup' });
+  });
+  events.sort((a, b) => a.date - b.date);
+  const el = document.getElementById('cal-list-body');
+  if (!events.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div>尚無排程</div>'; return; }
+  el.innerHTML = events.map(e => `
+    <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="width:90px;font-size:12px;color:var(--text2);font-family:'DM Mono',monospace">
+        ${e.date.toLocaleDateString('zh-TW')}<br>
+        ${e.date.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}
+      </div>
+      <span class="badge ${e.type === 'fitting' ? 'badge-blue' : 'badge-green'}">${e.label}</span>
+      <div style="flex:1">
+        <span style="font-weight:600">${e.patient.name}</span>
+        <span style="color:var(--text3);font-size:12px;margin-left:8px">${e.patient.hospital || ''} ${e.patient.doctor || ''}</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="showDetail('${e.patient.id}')">查看</button>
+    </div>
+  `).join('');
+}
+
+// ── PATIENT LIST ──
+function renderHospitalFilter() {
+  const hospitals = [...new Set(patients.map(p => p.hospital).filter(Boolean))];
+  const sel = document.getElementById('filter-hospital');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">所有醫院</option>' + hospitals.map(h => `<option value="${h}" ${cur===h?'selected':''}>${h}</option>`).join('');
+}
+
+function renderPatientList() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const hosp = document.getElementById('filter-hospital').value;
+  const filtered = patients.filter(p => {
+    const match = !q || [p.name, p.hospital, p.doctor, p.phone, p.caseNo].some(v => v && v.toLowerCase().includes(q));
+    const hMatch = !hosp || p.hospital === hosp;
+    return match && hMatch;
+  });
+
+  const tbody = document.getElementById('patient-tbody');
+  const empty = document.getElementById('patient-empty');
+  if (!filtered.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map(p => {
+    const fd = p.fittingDate ? new Date(p.fittingDate).toLocaleDateString('zh-TW') : '—';
+    const pd = p.pickupDate ? new Date(p.pickupDate).toLocaleDateString('zh-TW') : '—';
+    return `<tr>
+      <td><strong>${p.name}</strong>${p.caseNo ? `<br><span style="font-size:11px;color:var(--text3)">${p.caseNo}</span>` : ''}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">${p.phone || '—'}</td>
+      <td>${p.hospital || '—'}</td>
+      <td>${p.doctor || '—'}</td>
+      <td><span class="badge badge-blue">${fd}</span></td>
+      <td><span class="badge badge-green">${pd}</span></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="showDetail('${p.id}')">詳情</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── IMAGES ──
+let currentDetailId = null;
+
+// 圖片改存 indexedDB，不佔 localStorage 空間
+const IMG_DB_NAME = 'cl-images';
+const IMG_DB_VER = 1;
+let imgDB = null;
+
+function openImgDB() {
+  return new Promise((resolve, reject) => {
+    if (imgDB) { resolve(imgDB); return; }
+    const req = indexedDB.open(IMG_DB_NAME, IMG_DB_VER);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('images', { keyPath: 'key' });
+    req.onsuccess = e => { imgDB = e.target.result; resolve(imgDB); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function imgKey(patientId, idx) { return `${patientId}_${idx}`; }
+
+async function saveImageToDB(key, dataURL) {
+  const db = await openImgDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('images', 'readwrite');
+    tx.objectStore('images').put({ key, data: dataURL });
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+
+async function loadImageFromDB(key) {
+  const db = await openImgDB();
+  return new Promise((res, rej) => {
+    const req = db.transaction('images').objectStore('images').get(key);
+    req.onsuccess = () => res(req.result ? req.result.data : null);
+    req.onerror = () => rej(req.error);
+  });
+}
+
+async function deleteImageFromDB(key) {
+  const db = await openImgDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('images', 'readwrite');
+    tx.objectStore('images').delete(key);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+
+// 壓縮圖片到最大 800px、品質 0.75
+function compressImage(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 800;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadImages(event) {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+  const p = patients.find(x => x.id === currentDetailId);
+  if (!p) return;
+  if (!p.images) p.images = [];
+
+  showToast('⏳ 上傳中...');
+
+  for (const file of files) {
+    try {
+      const compressed = await compressImage(file);
+      const meta = { name: file.name, uploadedAt: new Date().toISOString() };
+      p.images.push(meta);
+      const key = imgKey(p.id, p.images.length - 1);
+      await saveImageToDB(key, compressed);
+    } catch(err) {
+      console.error('Upload error:', err);
+      showToast('⚠️ 上傳失敗：' + file.name);
+    }
+  }
+
+  save();
+  await renderDetailImages(p);
+  showToast(`✅ 已上傳 ${files.length} 張圖片`);
+  event.target.value = '';
+}
+
+async function renderDetailImages(p) {
+  const grid = document.getElementById('detail-images-grid');
+  if (!grid) return;
+  if (!p.images || !p.images.length) { grid.innerHTML = ''; return; }
+
+  // 先清空，顯示載入中
+  grid.innerHTML = '<span style="font-size:12px;color:var(--text3)">載入中...</span>';
+
+  const items = await Promise.all(p.images.map(async (img, idx) => {
+    const key = imgKey(p.id, idx);
+    const src = await loadImageFromDB(key);
+    if (!src) return '';
+    return `
+      <div style="position:relative;display:inline-block">
+        <img src="${src}" alt="${img.name}"
+          style="width:100px;height:100px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border);cursor:pointer;display:block"
+          onclick="viewImage('${src}','${img.name}')"
+          title="${img.name}">
+        <div style="font-size:9px;color:var(--text3);text-align:center;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">${img.name}</div>
+        <button onclick="deleteImage('${p.id}',${idx})"
+          style="position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>`;
+  }));
+
+  grid.innerHTML = items.filter(Boolean).join('');
+}
+
+function viewImage(src, name) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px';
+  overlay.innerHTML = `
+    <img src="${src}" style="max-width:90vw;max-height:80vh;border-radius:10px;object-fit:contain">
+    <div style="color:#fff;font-size:13px;opacity:0.7">${name}</div>
+    <button onclick="this.parentElement.remove()" style="color:#fff;background:rgba(255,255,255,0.15);border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px">✕ 關閉</button>`;
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+}
+
+async function deleteImage(patientId, imgIdx) {
+  const p = patients.find(x => x.id === patientId);
+  if (!p || !p.images) return;
+
+  // 刪除 DB 裡的圖片，並重新整理後續 key
+  const oldLen = p.images.length;
+  // 刪除目標
+  await deleteImageFromDB(imgKey(patientId, imgIdx));
+  // 後面的 index 往前移
+  for (let i = imgIdx + 1; i < oldLen; i++) {
+    const src = await loadImageFromDB(imgKey(patientId, i));
+    if (src) await saveImageToDB(imgKey(patientId, i - 1), src);
+    await deleteImageFromDB(imgKey(patientId, i));
+  }
+
+  p.images.splice(imgIdx, 1);
+  save();
+  await renderDetailImages(p);
+  showToast('🗑️ 已刪除圖片');
+}
+
+function updateCaseNo(patientId, value) {
+  const p = patients.find(x => x.id === patientId);
+  if (!p) return;
+  p.caseNo = value.trim();
+  save();
+}
+
+// ── DETAIL MODAL ──
+function showDetail(id) {
+  const p = patients.find(x => x.id === id);
+  if (!p) return;
+
+  document.getElementById('detail-modal-title').textContent = `患者：${p.name}`;
+
+  const fmtDate = d => d ? new Date(d).toLocaleString('zh-TW') : '未填寫';
+
+  // 支援新格式（raw/params）和舊格式（bc/power/dia）
+  const lensBlock = (eye, l) => {
+    if (!l) return '—';
+    if (l.raw) {
+      const paramStr = fmtParams(l.params, l.isOrthoK);
+      // 特殊片只有「處方」一個 key，直接顯示原始即可
+      if (!l.isOrthoK && l.params && l.params['處方']) {
+        return `<span style="font-family:'DM Mono',monospace;font-size:13px">${l.params['處方']}</span>`;
+      }
+      return `<div style="font-size:13px;line-height:2">${paramStr}</div>`;
+    }
+    if (l.bc) return `${l.type||''} ${l.bc} / ${l.power} / ${l.dia}`;
+    return '—';
+  };
+
+  document.getElementById('detail-modal-body').innerHTML = `
+    <div class="detail-section">
+      <div class="detail-section-title">基本資料</div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="detail-label">姓名</div><div class="detail-value">${p.name}</div></div>
+        <div class="detail-item"><div class="detail-label">電話</div><div class="detail-value mono">${p.phone || '—'}</div></div>
+        <div class="detail-item">
+          <div class="detail-label">病例號</div>
+          <input value="${p.caseNo || ''}" placeholder="輸入病例號"
+            style="border:1.5px solid var(--border);border-radius:6px;padding:5px 9px;font-size:13px;font-family:'DM Mono',monospace;width:100%;outline:none;color:var(--text)"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
+            onchange="updateCaseNo('${p.id}', this.value)">
+        </div>
+        <div class="detail-item"><div class="detail-label">醫院</div><div class="detail-value">${p.hospital || '—'}</div></div>
+        <div class="detail-item"><div class="detail-label">醫師</div><div class="detail-value">${p.doctor || '—'}</div></div>
+        ${p.brand ? `<div class="detail-item" style="grid-column:1/-1"><div class="detail-label">鏡片品牌／類型</div><div class="detail-value" style="color:var(--accent2);font-weight:600">${p.brand}</div></div>` : ''}
+        ${p.dk ? `<div class="detail-item"><div class="detail-label">透氧值</div><div class="detail-value" style="font-weight:600;color:var(--green)">${p.dk}</div></div>` : ''}
+      ${p.dk ? `<div class="detail-item"><div class="detail-label">透氧值</div><div class="detail-value" style="font-weight:600;color:var(--green)">${p.dk}</div></div>` : ''}
+      </div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">隱形眼鏡處方</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="detail-item"><div class="detail-label">OD（右眼）</div><div class="detail-value mono">${lensBlock('OD', p.od)}</div></div>
+        <div class="detail-item"><div class="detail-label">OS（左眼）</div><div class="detail-value mono">${lensBlock('OS', p.os)}</div></div>
+      </div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">排程</div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="detail-label">驗配日期</div><div class="detail-value">${fmtDate(p.fittingDate)}</div></div>
+        <div class="detail-item"><div class="detail-label">取件日期</div><div class="detail-value">${fmtDate(p.pickupDate)}</div></div>
+      </div>
+    </div>
+    ${p.note ? `<div class="detail-section"><div class="detail-section-title">備注</div><div style="font-size:14px;color:var(--text)">${p.note}</div></div>` : ''}
+  `;
+
+  currentDetailId = id;
+  document.getElementById('detail-delete-btn').onclick = () => deletePatient(id);
+  renderDetailImages(p);
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+function deletePatient(id) {
+  closeModal('detail-modal');
+  document.getElementById('confirm-delete-btn').onclick = () => {
+    patients = patients.filter(p => p.id !== id);
+    save();
+    closeModal('delete-confirm-modal');
+    renderPatientList();
+    renderDashboard();
+    showToast('🗑️ 已刪除患者資料');
+  };
+  document.getElementById('delete-confirm-modal').classList.add('open');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── TOAST ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── EXPORT ──
+
+function lensParamsStr(l) {
+  if (!l) return '';
+  if (l.raw) {
+    if (!l.isOrthoK && l.params && l.params['處方']) return l.params['處方'];
+    if (l.params) {
+      const ORDER = ['類型','平K','陡K','TP','直徑','SAG','其他參數','周邊','處方'];
+      return ORDER.filter(k => l.params[k]).map(k => `${k}:${l.params[k]}`).join(' ');
+    }
+    return l.raw;
+  }
+  if (l.bc) return `${l.type||''} ${l.bc}/${l.power}/${l.dia}`;
+  return '';
+}
+
+// ── 取得患者的所有 TP 值（OD + OS）
+function getPatientTPs(p) {
+  const tps = [];
+  ['od','os'].forEach(eye => {
+    const tp = p[eye] && p[eye].params && p[eye].params['TP'];
+    if (tp !== undefined && tp !== '') {
+      const n = parseFloat(tp);
+      if (!isNaN(n)) tps.push(n);
+    }
+  });
+  return tps;
+}
+
+function getPatientShape(p) {
+  for (const eye of ['od','os']) {
+    const shape = p[eye] && p[eye].params && p[eye].params['類型'];
+    if (shape) return shape;
+  }
+  return '';
+}
+
+function getExportFiltered() {
+  const hosp   = document.getElementById('ex-hospital').value;
+  const doc    = document.getElementById('ex-doctor').value;
+  const brand  = document.getElementById('ex-brand').value;
+  const shape  = document.getElementById('ex-shape') ? document.getElementById('ex-shape').value : '';
+  const tpFrom = document.getElementById('ex-tp-from') ? document.getElementById('ex-tp-from').value : '';
+  const tpTo   = document.getElementById('ex-tp-to')   ? document.getElementById('ex-tp-to').value   : '';
+  const from   = document.getElementById('ex-date-from').value;
+  const to     = document.getElementById('ex-date-to').value;
+
+  return patients.filter(p => {
+    if (hosp && p.hospital !== hosp) return false;
+    if (doc  && p.doctor   !== doc)  return false;
+    if (brand === 'ortho'     && !isOrthoK(p.brand))    return false;
+    if (brand === 'specialty' && !isSpecialty(p.brand)) return false;
+    if (brand && brand !== 'ortho' && brand !== 'specialty' && p.brand !== brand) return false;
+    if (shape) {
+      const ps = getPatientShape(p);
+      if (!ps.startsWith(shape.slice(0,1))) return false;
+    }
+    if (tpFrom !== '' || tpTo !== '') {
+      const tps = getPatientTPs(p);
+      if (!tps.length) return false;
+      const fromN = tpFrom !== '' ? parseFloat(tpFrom) : -Infinity;
+      const toN   = tpTo   !== '' ? parseFloat(tpTo)   : Infinity;
+      const min = Math.min(fromN, toN), max = Math.max(fromN, toN);
+      if (!tps.some(tp => tp >= min && tp <= max)) return false;
+    }
+    if (from || to) {
+      const pd = p.pickupDate ? new Date(p.pickupDate) : null;
+      if (from && (!pd || pd < new Date(from))) return false;
+      if (to   && (!pd || pd > new Date(to + 'T23:59:59'))) return false;
+    }
+    return true;
+  });
+}
+
+function initExportFilters() {
+  const hospitals = [...new Set(patients.map(p => p.hospital).filter(Boolean))].sort();
+  const doctors   = [...new Set(patients.map(p => p.doctor).filter(Boolean))].sort();
+  const brands    = [...new Set(patients.map(p => p.brand).filter(Boolean))].sort();
+  const sel = (id, blank, items) => {
+    const el = document.getElementById(id); if (!el) return;
+    const cur = el.value;
+    el.innerHTML = `<option value="">${blank}</option>` + items.map(v => `<option value="${v}">${v}</option>`).join('');
+    el.value = cur;
+  };
+  sel('ex-hospital','全部醫院', hospitals);
+  sel('ex-doctor',  '全部醫師', doctors);
+  const bSel = document.getElementById('ex-brand');
+  const bcur = bSel.value;
+  bSel.innerHTML = `<option value="">全部</option><option value="ortho">塑形片（全部）</option><option value="specialty">特殊片（全部）</option><optgroup label="── 個別品牌 ──">${brands.map(b=>`<option value="${b}">${b}</option>`).join('')}</optgroup>`;
+  bSel.value = bcur;
+}
+
+let currentExportTab = 'list';
+function switchExportTab(tab, el) {
+  currentExportTab = tab;
+  document.querySelectorAll('#page-export .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['list','tp-dist','brand-dist'].forEach(t => {
+    const v = document.getElementById(`export-${t}-view`);
+    if (v) v.style.display = t === tab ? '' : 'none';
+  });
+  renderExportPreview();
+}
+
+function renderExportPreview() {
+  const filtered = getExportFiltered();
+  document.getElementById('export-count').textContent = `共 ${filtered.length} 筆`;
+  if (currentExportTab === 'list')       renderExportList(filtered);
+  if (currentExportTab === 'tp-dist')    renderTPDist(filtered);
+  if (currentExportTab === 'brand-dist') renderBrandDist(filtered);
+}
+
+function renderExportList(filtered) {
+  const cards = document.getElementById('export-cards');
+  const empty = document.getElementById('export-empty');
+  if (!filtered.length) { cards.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  const gp = (l,k) => (l&&l.params&&l.params[k]) ? l.params[k] : '';
+  const fd = d => d ? new Date(d).toLocaleDateString('zh-TW') : '—';
+
+  cards.innerHTML = filtered.map(p => {
+    const odTP = gp(p.od,'TP'), osTP = gp(p.os,'TP');
+    const shape = getPatientShape(p);
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:700;font-size:15px">${p.name}</span>
+        <span style="font-size:11px;color:var(--text3)">${fd(p.pickupDate)}</span>
+      </div>
+      <div style="color:var(--text2);font-size:12px;margin-bottom:6px">${p.hospital||''} ${p.doctor||''}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        ${p.brand ? `<span class="badge badge-blue">${p.brand}</span>` : ''}
+        ${shape ? `<span class="badge" style="background:var(--surface2);color:var(--text2)">${shape}</span>` : ''}
+        ${p.dk ? `<span class="badge badge-green">${p.dk}</span>` : ''}
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);line-height:1.8">
+        ${p.od&&p.od.raw ? `<div>OD　${p.od.raw}</div>` : ''}
+        ${p.os&&p.os.raw ? `<div>OS　${p.os.raw}</div>` : ''}
+        ${(odTP||osTP) ? `<div style="color:var(--accent)">TP　OD ${odTP||'—'}　OS ${osTP||'—'}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTPDist(filtered) {
+  const body = document.getElementById('tp-dist-body');
+  const allTPs = [];
+  filtered.forEach(p => getPatientTPs(p).forEach(tp => allTPs.push({ tp, name: p.name })));
+  if (!allTPs.length) { body.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div>無 TP 資料</div>'; return; }
+  const STEP = 0.5;
+  const minV = Math.floor(Math.min(...allTPs.map(x=>x.tp)) / STEP) * STEP;
+  const maxV = Math.ceil (Math.max(...allTPs.map(x=>x.tp)) / STEP) * STEP;
+  const buckets = {};
+  for (let v = minV; v <= maxV + 0.001; v = Math.round((v+STEP)*100)/100) buckets[v.toFixed(2)] = [];
+  allTPs.forEach(({tp,name}) => {
+    const key = (Math.floor(tp/STEP)*STEP).toFixed(2);
+    if (buckets[key]) buckets[key].push(name);
+  });
+  const maxC = Math.max(...Object.values(buckets).map(b=>b.length), 1);
+  body.innerHTML = `<div style="font-size:12px;color:var(--text3);margin-bottom:12px">TP 度數分佈（每 0.5D 一格，OD+OS 各算一筆）</div>`
+    + Object.entries(buckets).sort(([a],[b])=>parseFloat(a)-parseFloat(b)).map(([r,items])=>{
+      const pct = items.length ? Math.round(items.length/maxC*100) : 0;
+      const label = `${r} ~ ${(parseFloat(r)+STEP).toFixed(2)}`;
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+        <div style="width:100px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);text-align:right">${label}</div>
+        <div style="flex:1;background:var(--surface2);border-radius:4px;height:20px">
+          <div style="width:${pct}%;background:var(--accent);height:100%;border-radius:4px"></div>
+        </div>
+        <div style="width:28px;font-size:12px;font-weight:700;color:var(--accent)">${items.length}</div>
+        <div style="font-size:10px;color:var(--text3);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${items.join('、')}</div>
+      </div>`;
+    }).join('');
+}
+
+function renderBrandDist(filtered) {
+  const body = document.getElementById('brand-dist-body');
+  if (!filtered.length) { body.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div>無資料</div>'; return; }
+  const map = {};
+  filtered.forEach(p => {
+    const brand = p.brand || '（未標記）';
+    const shape = getPatientShape(p) || '—';
+    const key = brand + '|||' + shape;
+    map[key] = (map[key]||0) + 1;
+  });
+  const byBrand = {};
+  Object.entries(map).forEach(([key,cnt]) => {
+    const [brand,shape] = key.split('|||');
+    if (!byBrand[brand]) byBrand[brand] = { total:0, shapes:{} };
+    byBrand[brand].total += cnt;
+    byBrand[brand].shapes[shape] = cnt;
+  });
+  body.innerHTML = Object.entries(byBrand).sort((a,b)=>b[1].total-a[1].total).map(([brand,data])=>`
+    <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span class="badge badge-blue">${brand}</span>
+        <span style="font-size:13px;font-weight:700">${data.total} 筆</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${Object.entries(data.shapes).map(([shape,cnt])=>
+          `<span style="background:var(--surface2);padding:3px 10px;border-radius:6px;font-size:12px">${shape} <b style="color:var(--accent)">${cnt}</b></span>`
+        ).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function resetExportFilters() {
+  ['ex-hospital','ex-doctor','ex-brand','ex-shape','ex-tp-from','ex-tp-to','ex-date-from','ex-date-to']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  renderExportPreview();
+}
+
+function exportExcel() {
+  const filtered = getExportFiltered();
+  if (!filtered.length) { showToast('⚠️ 沒有符合條件的資料'); return; }
+  const headers = ['患者姓名','電話','病例號','醫院','醫師','鏡片品牌','Dk值','形狀',
+    'OD TP','OD 平K','OD 陡K','OD 直徑','OD 顏色','OD 其他','OD 原始',
+    'OS TP','OS 平K','OS 陡K','OS 直徑','OS 顏色','OS 其他','OS 原始',
+    '驗配日期','取件日期','備注'];
+  const gp = (l,k) => (l&&l.params&&l.params[k]) ? l.params[k] : '';
+  const rows = filtered.map(p => [
+    p.name, p.phone||'', p.caseNo||'', p.hospital||'', p.doctor||'', p.brand||'', p.dk||'',
+    getPatientShape(p),
+    gp(p.od,'TP'), gp(p.od,'平K'), gp(p.od,'陡K'), gp(p.od,'直徑'), gp(p.od,'顏色'),
+    gp(p.od,'其他參數')||gp(p.od,'周邊')||gp(p.od,'處方'), p.od&&p.od.raw||'',
+    gp(p.os,'TP'), gp(p.os,'平K'), gp(p.os,'陡K'), gp(p.os,'直徑'), gp(p.os,'顏色'),
+    gp(p.os,'其他參數')||gp(p.os,'周邊')||gp(p.os,'處方'), p.os&&p.os.raw||'',
+    p.fittingDate ? new Date(p.fittingDate).toLocaleDateString('zh-TW') : '',
+    p.pickupDate  ? new Date(p.pickupDate).toLocaleDateString('zh-TW')  : '',
+    p.note||''
+  ]);
+  const BOM = '\uFEFF';
+  const esc = v => `"${String(v).replace(/"/g,'""')}"`;
+  const csv = BOM + [headers,...rows].map(r=>r.map(esc).join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `患者報表_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`✅ 已匯出 ${filtered.length} 筆`);
+}
+// ── INIT ──
+function backupCSV() {
+  if (!patients.length) { showToast('⚠️ 尚無資料可備份'); return; }
+  const headers = ['患者姓名','電話','病例號','醫院','醫師','鏡片品牌','Dk值','形狀',
+    'OD TP','OD 平K','OD 陡K','OD 直徑','OD 顏色','OD 其他','OD 原始',
+    'OS TP','OS 平K','OS 陡K','OS 直徑','OS 顏色','OS 其他','OS 原始',
+    '驗配日期','取件日期','備注','建立日期'];
+  const gp = (l,k) => (l&&l.params&&l.params[k]) ? l.params[k] : '';
+  const rows = patients.map(p => [
+    p.name, p.phone||'', p.caseNo||'', p.hospital||'', p.doctor||'', p.brand||'', p.dk||'',
+    getPatientShape ? getPatientShape(p) : '',
+    gp(p.od,'TP'), gp(p.od,'平K'), gp(p.od,'陡K'), gp(p.od,'直徑'), gp(p.od,'顏色'),
+    gp(p.od,'其他參數')||gp(p.od,'周邊')||gp(p.od,'處方'), p.od&&p.od.raw||'',
+    gp(p.os,'TP'), gp(p.os,'平K'), gp(p.os,'陡K'), gp(p.os,'直徑'), gp(p.os,'顏色'),
+    gp(p.os,'其他參數')||gp(p.os,'周邊')||gp(p.os,'處方'), p.os&&p.os.raw||'',
+    p.fittingDate ? new Date(p.fittingDate).toLocaleDateString('zh-TW') : '',
+    p.pickupDate  ? new Date(p.pickupDate).toLocaleDateString('zh-TW')  : '',
+    p.note||'',
+    p.createdAt ? new Date(p.createdAt).toLocaleDateString('zh-TW') : ''
+  ]);
+  const BOM = '\uFEFF';
+  const esc = v => `"${String(v).replace(/"/g,'""')}"`;
+  const csv = BOM + [headers,...rows].map(r=>r.map(esc).join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `患者備份_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`✅ 已備份 ${patients.length} 筆資料`);
+}
+
+renderDashboard();
+</script>
+</body>
+</html>
