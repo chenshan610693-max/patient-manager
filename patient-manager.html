@@ -207,7 +207,7 @@
     outline: none; transition: border-color 0.15s;
     font-family: inherit;
   }
-  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,65,86,0.08); }
+  input:focus, select:focus, .det-input:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(47,65,86,0.08); }
   .lens-section {
     background: var(--surface2); border-radius: var(--radius-sm);
     padding: 14px; margin-bottom: 14px;
@@ -518,8 +518,8 @@
           </div>
         </div>
         <div style="display:flex;gap:14px;margin-top:12px;font-size:12px;color:var(--text2)">
-          <span>🔵 <span style="color:var(--accent)">驗配</span></span>
-          <span>🟢 <span style="color:#1a9e94">取件</span></span>
+          <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block"></span><span style="color:var(--accent)">驗配</span></span>
+          <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block"></span><span style="color:var(--green)">取件</span></span>
         </div>
       </div>
 
@@ -689,7 +689,10 @@
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title" id="detail-modal-title">患者詳情</span>
-      <button class="close-btn" onclick="closeModal('detail-modal')">✕</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="detail-edit-btn" class="btn btn-ghost btn-sm">✏️ 編輯</button>
+        <button class="close-btn" onclick="closeModal('detail-modal')">✕</button>
+      </div>
     </div>
     <div class="modal-body" id="detail-modal-body"></div>
     <!-- 圖片區 -->
@@ -1034,8 +1037,8 @@ function renderMultiConfirm() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
           <div><span style="color:var(--text3);font-size:11px">電話</span><br><b>${p.phone||'—'}</b></div>
           <div><span style="color:var(--text3);font-size:11px">品牌</span><br><b style="color:var(--accent2)">${p.brand||'—'}</b>${p.dk ? ` <span class="badge badge-green">${p.dk}</span>` : ''}</div>
-          <div style="grid-column:1/-1"><span style="color:var(--text3);font-size:11px">OD</span><br><span style="font-family:'DM Mono',monospace;font-size:12px">${p.odRaw||'—'}</span></div>
-          <div style="grid-column:1/-1"><span style="color:var(--text3);font-size:11px">OS</span><br><span style="font-family:'DM Mono',monospace;font-size:12px">${p.osRaw||'—'}</span></div>
+          <div style="grid-column:1/-1"><span style="color:var(--text3);font-size:11px">OD</span><br><span style="font-family:DM Mono,monospace;font-size:12px">${p.odRaw||'—'}</span></div>
+          <div style="grid-column:1/-1"><span style="color:var(--text3);font-size:11px">OS</span><br><span style="font-family:DM Mono,monospace;font-size:12px">${p.osRaw||'—'}</span></div>
           <div><span style="color:var(--text3);font-size:11px">取件日期</span><br><b>${p.pickupDate||'—'}</b></div>
           ${p.note ? `<div><span style="color:var(--text3);font-size:11px">備注</span><br>${p.note}</div>` : ''}
         </div>
@@ -1081,7 +1084,7 @@ function saveAllParsed() {
         od: { raw: p.odRaw||'', params: p.odParams||{}, isOrthoK: p.odIsOrthoK||false },
         os: { raw: p.osRaw||'', params: p.osParams||{}, isOrthoK: p.osIsOrthoK||false },
         fittingDate: '', pickupDate: pickupISO,
-        note: p.note||'', images: [],
+        note: p.note||'', background: '', images: [],
         createdAt: new Date().toISOString(),
       });
       created++;
@@ -1346,21 +1349,21 @@ function makeDayEl(date, otherMonth) {
   el.innerHTML = `<div class="cal-day-num">${date.getDate()}</div>`;
 
   const ds = date.toDateString();
+  // 收集當天事件並按時間排序
+  const dayEvents = [];
   patients.forEach(p => {
-    if (p.fittingDate && new Date(p.fittingDate).toDateString() === ds) {
-      const ev = document.createElement('div');
-      ev.className = 'cal-event fitting';
-      ev.textContent = `🔵 ${p.name}`;
-      ev.onclick = (e) => { e.stopPropagation(); showDetail(p.id); };
-      el.appendChild(ev);
-    }
-    if (p.pickupDate && new Date(p.pickupDate).toDateString() === ds) {
-      const ev = document.createElement('div');
-      ev.className = 'cal-event pickup';
-      ev.textContent = `🟢 ${p.name}`;
-      ev.onclick = (e) => { e.stopPropagation(); showDetail(p.id); };
-      el.appendChild(ev);
-    }
+    if (p.fittingDate && new Date(p.fittingDate).toDateString() === ds)
+      dayEvents.push({ time: new Date(p.fittingDate), type: 'fitting', p });
+    if (p.pickupDate && new Date(p.pickupDate).toDateString() === ds)
+      dayEvents.push({ time: new Date(p.pickupDate), type: 'pickup', p });
+  });
+  dayEvents.sort((a, b) => a.time - b.time);
+  dayEvents.forEach(({ type, p }) => {
+    const ev = document.createElement('div');
+    ev.className = 'cal-event ' + type;
+    ev.textContent = p.name;
+    ev.onclick = (e) => { e.stopPropagation(); showDetail(p.id); };
+    el.appendChild(ev);
   });
   return el;
 }
@@ -1385,7 +1388,7 @@ function renderCalList() {
   if (!events.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div>尚無排程</div>'; return; }
   el.innerHTML = events.map(e => `
     <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="width:90px;font-size:12px;color:var(--text2);font-family:'DM Mono',monospace">
+      <div style="width:90px;font-size:12px;color:var(--text2);font-family:DM Mono,monospace">
         ${e.date.toLocaleDateString('zh-TW')}<br>
         ${e.date.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}
       </div>
@@ -1426,7 +1429,7 @@ function renderPatientList() {
     const pd = p.pickupDate ? new Date(p.pickupDate).toLocaleDateString('zh-TW') : '—';
     return `<tr>
       <td><strong>${p.name}</strong>${p.caseNo ? `<br><span style="font-size:11px;color:var(--text3)">${p.caseNo}</span>` : ''}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:12px">${p.phone || '—'}</td>
+      <td style="font-family:DM Mono,monospace;font-size:12px">${p.phone || '—'}</td>
       <td>${p.hospital || '—'}</td>
       <td>${p.doctor || '—'}</td>
       <td><span class="badge badge-blue">${fd}</span></td>
@@ -1628,70 +1631,121 @@ function updateCaseNo(patientId, value) {
 }
 
 // ── DETAIL MODAL ──
+let detailEditMode = false;
+
 function showDetail(id) {
+  detailEditMode = false;
   const p = patients.find(x => x.id === id);
   if (!p) return;
-
-  document.getElementById('detail-modal-title').textContent = `患者：${p.name}`;
-
-  const fmtDate = d => d ? new Date(d).toLocaleString('zh-TW') : '未填寫';
-
-  // 支援新格式（raw/params）和舊格式（bc/power/dia）
-  const lensBlock = (eye, l) => {
-    if (!l) return '—';
-    if (l.raw) {
-      const paramStr = fmtParams(l.params, l.isOrthoK);
-      // 特殊片只有「處方」一個 key，直接顯示原始即可
-      if (!l.isOrthoK && l.params && l.params['處方']) {
-        return `<span style="font-family:'DM Mono',monospace;font-size:13px">${l.params['處方']}</span>`;
-      }
-      return `<div style="font-size:13px;line-height:2">${paramStr}</div>`;
-    }
-    if (l.bc) return `${l.type||''} ${l.bc} / ${l.power} / ${l.dia}`;
-    return '—';
-  };
-
-  document.getElementById('detail-modal-body').innerHTML = `
-    <div class="detail-section">
-      <div class="detail-section-title">基本資料</div>
-      <div class="detail-grid">
-        <div class="detail-item"><div class="detail-label">姓名</div><div class="detail-value">${p.name}</div></div>
-        <div class="detail-item"><div class="detail-label">電話</div><div class="detail-value mono">${p.phone || '—'}</div></div>
-        <div class="detail-item">
-          <div class="detail-label">病例號</div>
-          <input value="${p.caseNo || ''}" placeholder="輸入病例號"
-            style="border:1.5px solid var(--border);border-radius:6px;padding:5px 9px;font-size:13px;font-family:'DM Mono',monospace;width:100%;outline:none;color:var(--text)"
-            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
-            onchange="updateCaseNo('${p.id}', this.value)">
-        </div>
-        <div class="detail-item"><div class="detail-label">醫院</div><div class="detail-value">${p.hospital || '—'}</div></div>
-        <div class="detail-item"><div class="detail-label">醫師</div><div class="detail-value">${p.doctor || '—'}</div></div>
-        ${p.brand ? `<div class="detail-item" style="grid-column:1/-1"><div class="detail-label">鏡片品牌／類型</div><div class="detail-value" style="color:var(--accent2);font-weight:600">${p.brand}</div></div>` : ''}
-        ${p.dk ? `<div class="detail-item"><div class="detail-label">透氧值</div><div class="detail-value" style="font-weight:600;color:var(--green)">${p.dk}</div></div>` : ''}
-      ${p.dk ? `<div class="detail-item"><div class="detail-label">透氧值</div><div class="detail-value" style="font-weight:600;color:var(--green)">${p.dk}</div></div>` : ''}
-      </div>
-    </div>
-    <div class="detail-section">
-      <div class="detail-section-title">隱形眼鏡處方</div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div class="detail-item"><div class="detail-label">OD（右眼）</div><div class="detail-value mono">${lensBlock('OD', p.od)}</div></div>
-        <div class="detail-item"><div class="detail-label">OS（左眼）</div><div class="detail-value mono">${lensBlock('OS', p.os)}</div></div>
-      </div>
-    </div>
-    <div class="detail-section">
-      <div class="detail-section-title">排程</div>
-      <div class="detail-grid">
-        <div class="detail-item"><div class="detail-label">驗配日期</div><div class="detail-value">${fmtDate(p.fittingDate)}</div></div>
-        <div class="detail-item"><div class="detail-label">取件日期</div><div class="detail-value">${fmtDate(p.pickupDate)}</div></div>
-      </div>
-    </div>
-    ${p.note ? `<div class="detail-section"><div class="detail-section-title">備注</div><div style="font-size:14px;color:var(--text)">${p.note}</div></div>` : ''}
-  `;
-
   currentDetailId = id;
+  renderDetailContent(p);
   document.getElementById('detail-delete-btn').onclick = () => deletePatient(id);
   renderDetailImages(p);
   document.getElementById('detail-modal').classList.add('open');
+}
+
+function renderDetailContent(p) {
+  document.getElementById('detail-modal-title').textContent = '患者：' + p.name;
+
+  var editBtn = document.getElementById('detail-edit-btn');
+  if (editBtn) {
+    editBtn.textContent = detailEditMode ? '✅ 儲存' : '✏️ 編輯';
+    editBtn.onclick = function() {
+      if (detailEditMode) saveDetailEdit(p.id);
+      else { detailEditMode = true; renderDetailContent(p); }
+    };
+  }
+
+  var fmtDate = function(d) { return d ? new Date(d).toLocaleString('zh-TW') : '未填寫'; };
+  var lensBlock = function(eye, l) {
+    if (!l) return '—';
+    if (l.raw) {
+      if (!l.isOrthoK && l.params && l.params['處方'])
+        return '<span style="font-family:DM Mono,monospace;font-size:13px">' + l.params['處方'] + '</span>';
+      return '<div style="font-size:13px;line-height:2">' + fmtParams(l.params, l.isOrthoK) + '</div>';
+    }
+    if (l.bc) return (l.type||'') + ' ' + l.bc + ' / ' + l.power + ' / ' + l.dia;
+    return '—';
+  };
+
+  var IS = 'border:1.5px solid var(--border);border-radius:6px;padding:5px 9px;font-size:13px;width:100%;outline:none;color:var(--text);background:var(--surface)';
+
+  var field = function(label, val, key, mono) {
+    if (detailEditMode) {
+      return '<div class="detail-item"><div class="detail-label">' + label + '</div>' +
+        '<input id="de-' + key + '" value="' + (val||'').replace(/"/g,'&quot;') + '" placeholder="' + label + '"' +
+        ' class="det-input" style="' + IS + (mono ? ';font-family:DM Mono,monospace' : '') + '"></div></div>';
+    }
+    return '<div class="detail-item"><div class="detail-label">' + label + '</div>' +
+      '<div class="detail-value' + (mono ? ' mono' : '') + '">' + (val||'—') + '</div></div>';
+  };
+
+  var bgSection = '';
+  if (detailEditMode) {
+    bgSection = '<div class="detail-section"><div class="detail-section-title">患者附註</div>' +
+      '<textarea id="de-background" class="det-input" style="width:100%;min-height:80px;' + IS + ';resize:vertical;font-family:inherit">' +
+      (p.background||'') + '</textarea></div>';
+  } else if (p.background) {
+    bgSection = '<div class="detail-section"><div class="detail-section-title">患者附註</div>' +
+      '<div style="font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap">' + p.background + '</div></div>';
+  }
+
+  document.getElementById('detail-modal-body').innerHTML =
+    '<div class="detail-section">' +
+      '<div class="detail-section-title">基本資料</div>' +
+      '<div class="detail-grid">' +
+        field('姓名', p.name, 'name') +
+        field('電話', p.phone, 'phone', true) +
+        field('病例號', p.caseNo, 'caseNo', true) +
+        field('醫院', p.hospital, 'hospital') +
+        field('醫師', p.doctor, 'doctor') +
+      '</div>' +
+    '</div>' +
+    bgSection +
+    '<div class="detail-section">' +
+      '<div class="detail-section-title">鏡片資訊</div>' +
+      '<div class="detail-grid">' +
+        (p.brand ? '<div class="detail-item" style="grid-column:1/-1"><div class="detail-label">品牌／類型</div><div class="detail-value" style="color:var(--accent2);font-weight:600">' + p.brand + '</div></div>' : '') +
+        (p.dk ? '<div class="detail-item"><div class="detail-label">透氧値</div><div class="detail-value" style="font-weight:600;color:var(--green)">' + p.dk + '</div></div>' : '') +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">' +
+        '<div class="detail-item"><div class="detail-label">OD（右眼）</div><div class="detail-value mono">' + lensBlock('OD', p.od) + '</div></div>' +
+        '<div class="detail-item"><div class="detail-label">OS（左眼）</div><div class="detail-value mono">' + lensBlock('OS', p.os) + '</div></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="detail-section">' +
+      '<div class="detail-section-title">排程</div>' +
+      '<div class="detail-grid">' +
+        '<div class="detail-item"><div class="detail-label">驗配日期</div><div class="detail-value">' + fmtDate(p.fittingDate) + '</div></div>' +
+        '<div class="detail-item"><div class="detail-label">取件日期</div><div class="detail-value">' + fmtDate(p.pickupDate) + '</div></div>' +
+      '</div>' +
+    '</div>' +
+    (p.note ? '<div class="detail-section"><div class="detail-section-title">備註</div><div style="font-size:13px;color:var(--text)">' + p.note + '</div></div>' : '');
+}
+
+
+function saveDetailEdit(id) {
+  const p = patients.find(x => x.id === id);
+  if (!p) return;
+  const g = key => { const el = document.getElementById('de-' + key); return el ? el.value.trim() : null; };
+  if (g('name')) p.name = g('name');
+  if (g('phone') !== null) p.phone = g('phone');
+  if (g('caseNo') !== null) p.caseNo = g('caseNo');
+  if (g('hospital') !== null) p.hospital = g('hospital');
+  if (g('doctor') !== null) p.doctor = g('doctor');
+  const bg = document.getElementById('de-background');
+  if (bg) p.background = bg.value.trim();
+  save();
+  detailEditMode = false;
+  renderDetailContent(p);
+  showToast('✅ 已儲存');
+}
+
+function updateCaseNo(patientId, value) {
+  const p = patients.find(x => x.id === patientId);
+  if (!p) return;
+  p.caseNo = value.trim();
+  save();
 }
 
 function deletePatient(id) {
@@ -1850,7 +1904,7 @@ function renderExportList(filtered) {
         ${shape ? `<span class="badge" style="background:var(--surface2);color:var(--text2)">${shape}</span>` : ''}
         ${p.dk ? `<span class="badge badge-green">${p.dk}</span>` : ''}
       </div>
-      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);line-height:1.8">
+      <div style="font-family:DM Mono,monospace;font-size:11px;color:var(--text2);line-height:1.8">
         ${p.od&&p.od.raw ? `<div>OD　${p.od.raw}</div>` : ''}
         ${p.os&&p.os.raw ? `<div>OS　${p.os.raw}</div>` : ''}
         ${(odTP||osTP) ? `<div style="color:var(--accent)">TP　OD ${odTP||'—'}　OS ${osTP||'—'}</div>` : ''}
@@ -1879,7 +1933,7 @@ function renderTPDist(filtered) {
       const pct = items.length ? Math.round(items.length/maxC*100) : 0;
       const label = `${r} ~ ${(parseFloat(r)+STEP).toFixed(2)}`;
       return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-        <div style="width:100px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);text-align:right">${label}</div>
+        <div style="width:100px;font-family:DM Mono,monospace;font-size:11px;color:var(--text2);text-align:right">${label}</div>
         <div style="flex:1;background:var(--surface2);border-radius:4px;height:20px">
           <div style="width:${pct}%;background:var(--accent);height:100%;border-radius:4px"></div>
         </div>
