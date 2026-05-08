@@ -253,6 +253,8 @@
   }
   .cal-event.fitting { background: var(--accent-light); color: var(--accent); }
   .cal-event.pickup { background: var(--green-light); color: #1a9e94; }
+  .cal-event.purchase { background: var(--orange-light); color: var(--orange); }
+  .cal-event.task-todo { background: #f3e8ff; color: #9b59b6; }
 
   /* ── PATIENT LIST ── */
   .search-bar {
@@ -499,9 +501,12 @@
     <div id="page-calendar" class="page">
       <div class="page-header">
         <div class="page-title">📅 行事曆</div>
-        <div class="tabs">
-          <div class="tab active" onclick="switchCalView('month',this)">月</div>
-          <div class="tab" onclick="switchCalView('list',this)">清單</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="openTaskModal()">➕ 任務</button>
+          <div class="tabs">
+            <div class="tab active" onclick="switchCalView('month',this)">月</div>
+            <div class="tab" onclick="switchCalView('list',this)">清單</div>
+          </div>
         </div>
       </div>
 
@@ -517,16 +522,25 @@
             <div class="cal-grid" id="cal-days" style="margin-top:0"></div>
           </div>
         </div>
-        <div style="display:flex;gap:14px;margin-top:12px;font-size:12px;color:var(--text2)">
+        <div style="display:flex;gap:14px;margin-top:12px;font-size:12px;color:var(--text2);flex-wrap:wrap">
           <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block"></span><span style="color:var(--accent)">驗配</span></span>
           <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block"></span><span style="color:var(--green)">取件</span></span>
+          <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:var(--orange);display:inline-block"></span><span style="color:var(--orange)">採購</span></span>
+          <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#9b59b6;display:inline-block"></span><span style="color:#9b59b6">待辦</span></span>
         </div>
       </div>
 
       <div id="cal-list-view" style="display:none">
-        <div class="card">
-          <div class="card-header"><span class="card-title">所有排程（時間順序）</span></div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><span class="card-title">📋 排程（時間順序）</span></div>
           <div class="card-body" id="cal-list-body"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📌 任務清單</span>
+            <button class="btn btn-ghost btn-sm" onclick="openTaskModal()">➕ 新增</button>
+          </div>
+          <div class="card-body" id="cal-task-list"></div>
         </div>
       </div>
     </div>
@@ -664,6 +678,63 @@
     </div>
 
   </main>
+
+<!-- TASK MODAL -->
+<div class="modal-overlay" id="task-modal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <span class="modal-title" id="task-modal-title">新增任務</span>
+      <button class="close-btn" onclick="closeModal('task-modal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <!-- 類型選擇 -->
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button id="task-type-btn-purchase" class="btn btn-primary btn-sm" onclick="switchTaskType('purchase')">🛒 採購進度</button>
+        <button id="task-type-btn-todo" class="btn btn-ghost btn-sm" onclick="switchTaskType('todo')">📌 待辦提醒</button>
+      </div>
+
+      <!-- 採購進度欄位 -->
+      <div id="task-purchase-fields">
+        <div style="display:grid;grid-template-columns:1fr;gap:10px">
+          <div class="form-group"><label>醫院</label><input id="tk-hospital" type="text" placeholder="台北馬偕"></div>
+          <div class="form-group"><label>品項</label><input id="tk-item" type="text" placeholder="Ampleye 球面 8.65"></div>
+          <div class="form-group"><label>待辦事項</label><input id="tk-todo" type="text" placeholder="已下單，待確認到貨"></div>
+          <div class="form-group"><label>狀態</label>
+            <select id="tk-status">
+              <option value="待處理">⏳ 待處理</option>
+              <option value="進行中">🔄 進行中</option>
+              <option value="已完成">✅ 已完成</option>
+            </select>
+          </div>
+          <div class="form-group"><label>預計日期</label><input id="tk-date" type="date"></div>
+          <div class="form-group"><label>備註</label><textarea id="tk-note" class="note-area" style="min-height:60px" placeholder="備註..."></textarea></div>
+        </div>
+      </div>
+
+      <!-- 待辦提醒欄位 -->
+      <div id="task-todo-fields" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr;gap:10px">
+          <div class="form-group"><label>標題 *</label><input id="tk-title" type="text" placeholder="記得做的事..."></div>
+          <div class="form-group"><label>日期</label><input id="tk-todo-date" type="date"></div>
+          <div class="form-group"><label>狀態</label>
+            <select id="tk-todo-status">
+              <option value="待處理">⏳ 待處理</option>
+              <option value="進行中">🔄 進行中</option>
+              <option value="已完成">✅ 已完成</option>
+            </select>
+          </div>
+          <div class="form-group"><label>備註</label><textarea id="tk-todo-note" class="note-area" style="min-height:60px" placeholder="備註..."></textarea></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="task-delete-btn" style="display:none" onclick="deleteCurrentTask()">🗑️ 刪除</button>
+      <button class="btn btn-ghost" onclick="closeModal('task-modal')">取消</button>
+      <button class="btn btn-primary" onclick="saveTask()">💾 儲存</button>
+    </div>
+  </div>
+</div>
+
   <!-- SIDEBAR (bottom nav) -->
   <aside class="sidebar">
     <div class="nav-item active" onclick="showPage('dashboard')">
@@ -754,7 +825,7 @@ function showPage(name) {
   const navMap = { dashboard: 0, input: 1, calendar: 2, patients: 3, export: 4 };
   document.querySelectorAll('.nav-item')[navMap[name]].classList.add('active');
   if (name === 'dashboard') renderDashboard();
-  if (name === 'calendar') renderCalendar();
+  if (name === 'calendar') { renderCalendar(); renderTaskList(); }
   if (name === 'patients') { renderPatientList(); renderHospitalFilter(); }
   if (name === 'export') { initExportFilters(); renderExportPreview(); }
 }
@@ -909,19 +980,38 @@ function parseBlock(lines) {
     pickupDate:'', fittingDate:'', note:'', caseNo:'' };
   const usedLines = new Set();
 
-  // 1. 醫院 & 醫師（允許 emoji 前後）
+  // 1. 醫院 & 醫師（允許 emoji 前後，支援短醫院名如「北醫」）
   lines.forEach((line, i) => {
     const clean = cleanLine(line);
+    // 有醫師字樣的行
     const m = clean.match(/^(.+?)\s+(.+醫師)/);
-    if (m) { result.hospital = m[1].trim(); result.doctor = m[2].trim(); usedLines.add(i); }
+    if (m) { result.hospital = m[1].trim(); result.doctor = m[2].trim(); usedLines.add(i); return; }
+    // 只有醫師沒有醫院（如單獨一行「蔡振行醫師」）
+    const m2 = clean.match(/^(.+醫師)$/);
+    if (m2 && !result.doctor) { result.doctor = m2[1].trim(); usedLines.add(i); }
   });
+  // 如果醫院還沒找到，找前一行
+  if (!result.hospital && result.doctor) {
+    lines.forEach((line, i) => {
+      if (usedLines.has(i)) return;
+      const clean = cleanLine(line);
+      // 短醫院名（2-8個字，不含OD/OS/數字）
+      if (/^[\u4e00-\u9fa5a-zA-Z]{2,8}$/.test(clean) && !/(OD|OS)/i.test(clean)) {
+        result.hospital = clean; usedLines.add(i);
+      }
+    });
+  }
 
-  // 2. 姓名 & 電話（允許後面有 emoji/數字 標記）
+  // 2. 姓名 & 電話
   lines.forEach((line, i) => {
     if (usedLines.has(i)) return;
     const clean = cleanLine(line);
-    const m = clean.match(/^([\u4e00-\u9fa5]{2,5})\s+(09\d{8}|\d{10})/);
-    if (m) { result.name = m[1]; result.phone = m[2]; usedLines.add(i); }
+    // 有電話：「蔡永晴 0912345678」
+    const mPhone = clean.match(/^([一-龥]{2,5})\s+(09\d{8}|\d{10})/);
+    if (mPhone) { result.name = mPhone[1]; result.phone = mPhone[2]; usedLines.add(i); return; }
+    // 只有姓名（2-5個中文字，獨立一行，沒有其他內容）
+    const mName = clean.match(/^([一-龥]{2,5})$/);
+    if (mName && !result.name) { result.name = mName[1]; usedLines.add(i); }
   });
 
   // 3. 品牌行
@@ -949,10 +1039,10 @@ function parseBlock(lines) {
     }
   });
 
-  // 6. 日期
+  // 6. 日期（取件）— 支援「2026/06/04 19:00取件」或「2026/06/04 19:00」
   lines.forEach((line, i) => {
     if (usedLines.has(i)) return;
-    const wt = line.match(/(\d{4}\/\d{2}\/\d{2})\s+(\d{1,2}:\d{2})/);
+    const wt = line.match(/(\d{4}\/\d{2}\/\d{2})\s*(\d{1,2}:\d{2})/);
     if (wt) { result.pickupDate = wt[1] + ' ' + wt[2]; usedLines.add(i); return; }
     const do_ = line.match(/(\d{4}\/\d{2}\/\d{2})/);
     if (do_) { result.pickupDate = do_[1]; usedLines.add(i); }
@@ -995,17 +1085,22 @@ function parseRaw() {
   renderMultiConfirm();
 }
 
-// 找同名患者（姓名完全相符）
+// 找同名患者（精確比對）
 function findExisting(name, hospital, doctor) {
   if (!name) return null;
-  // 先找同名+同醫院+同醫師
-  let match = patients.find(p => p.name === name && p.hospital === hospital && p.doctor === doctor);
+  // 1. 同名+同醫院+同醫師
+  var match = patients.find(function(p) {
+    return p.name === name && p.hospital === hospital && p.doctor === doctor;
+  });
   if (match) return match;
-  // 再找同名+同醫院
-  match = patients.find(p => p.name === name && p.hospital === hospital);
+  // 2. 同名+同醫院
+  match = patients.find(function(p) { return p.name === name && p.hospital === hospital; });
   if (match) return match;
-  // 最後找同名
-  match = patients.find(p => p.name === name);
+  // 3. 同名+同醫師
+  match = patients.find(function(p) { return p.name === name && p.doctor === doctor; });
+  if (match) return match;
+  // 4. 只比姓名
+  match = patients.find(function(p) { return p.name === name; });
   return match || null;
 }
 
@@ -1066,15 +1161,15 @@ function saveAllParsed() {
 
     if (existing) {
       // 更新：保留原有的 id、caseNo、fittingDate（預約時間）、images
-      existing.phone    = p.phone    || existing.phone;
-      existing.hospital = p.hospital || existing.hospital;
-      existing.doctor   = p.doctor   || existing.doctor;
-      existing.brand    = p.brand    || existing.brand;
-      existing.dk       = p.dk       || existing.dk;
-      existing.od = { raw: p.odRaw||'', params: p.odParams||{}, isOrthoK: p.odIsOrthoK||false };
-      existing.os = { raw: p.osRaw||'', params: p.osParams||{}, isOrthoK: p.osIsOrthoK||false };
-      if (pickupISO) existing.pickupDate = pickupISO;
-      if (p.note) existing.note = p.note;
+      if (p.phone)    existing.phone    = p.phone;
+      if (p.hospital) existing.hospital = p.hospital;
+      if (p.doctor)   existing.doctor   = p.doctor;
+      if (p.brand)    existing.brand    = p.brand;
+      if (p.dk)       existing.dk       = p.dk;
+      if (p.odRaw)    existing.od = { raw: p.odRaw, params: p.odParams||{}, isOrthoK: p.odIsOrthoK||false };
+      if (p.osRaw)    existing.os = { raw: p.osRaw, params: p.osParams||{}, isOrthoK: p.osIsOrthoK||false };
+      if (pickupISO)  existing.pickupDate = pickupISO;
+      if (p.note)     existing.note = p.note;
       updated++;
     } else {
       patients.push({
@@ -1363,6 +1458,18 @@ function makeDayEl(date, otherMonth) {
     ev.className = 'cal-event ' + type;
     ev.textContent = p.name;
     ev.onclick = (e) => { e.stopPropagation(); showDetail(p.id); };
+    el.appendChild(ev);
+  });
+  // 任務事件
+  tasks.forEach(function(t) {
+    var tDate = t.date ? new Date(t.date) : null;
+    if (!tDate) return;
+    if (tDate.toDateString() !== ds) return;
+    var ev = document.createElement('div');
+    ev.className = 'cal-event ' + (t.type === 'purchase' ? 'purchase' : 'task-todo');
+    var statusIcon = t.status === '已完成' ? '✓ ' : '';
+    ev.textContent = statusIcon + (t.type === 'purchase' ? (t.hospital || t.item || '採購') : (t.title || '待辦'));
+    ev.onclick = function(e) { e.stopPropagation(); openTaskModal(t.id); };
     el.appendChild(ev);
   });
   return el;
@@ -1704,20 +1811,31 @@ function renderDetailContent(p) {
     bgSection +
     '<div class="detail-section">' +
       '<div class="detail-section-title">鏡片資訊</div>' +
-      '<div class="detail-grid">' +
-        (p.brand ? '<div class="detail-item" style="grid-column:1/-1"><div class="detail-label">品牌／類型</div><div class="detail-value" style="color:var(--accent2);font-weight:600">' + p.brand + '</div></div>' : '') +
-        (p.dk ? '<div class="detail-item"><div class="detail-label">透氧値</div><div class="detail-value" style="font-weight:600;color:var(--green)">' + p.dk + '</div></div>' : '') +
-      '</div>' +
-      '<div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">' +
-        '<div class="detail-item"><div class="detail-label">OD（右眼）</div><div class="detail-value mono">' + lensBlock('OD', p.od) + '</div></div>' +
-        '<div class="detail-item"><div class="detail-label">OS（左眼）</div><div class="detail-value mono">' + lensBlock('OS', p.os) + '</div></div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px">' +
+        (detailEditMode ?
+          '<div class="detail-item"><div class="detail-label">品牌／類型</div><input id="de-brand" class="det-input" style="border:1.5px solid var(--border);border-radius:6px;padding:5px 9px;font-size:13px;width:100%;outline:none;color:var(--text);background:var(--surface)" value="' + (p.brand||'') + '" placeholder="品牌"></div>' +
+          '<div class="detail-item"><div class="detail-label">Dk値</div><input id="de-dk" class="det-input" style="border:1.5px solid var(--border);border-radius:6px;padding:5px 9px;font-size:13px;width:100%;outline:none;color:var(--text);background:var(--surface)" value="' + (p.dk||'') + '" placeholder="Dk180"></div>' +
+          '<div class="detail-item"><div class="detail-label">OD（右眼）</div><textarea id="de-od" class="det-input" style="border:1.5px solid var(--border);border-radius:6px;padding:5px 9px;font-size:13px;width:100%;outline:none;color:var(--text);background:var(--surface);min-height:50px;resize:vertical;font-family:DM Mono,monospace" placeholder="OD 處方...">' + ((p.od&&p.od.raw)||'') + '</textarea></div>' +
+          '<div class="detail-item"><div class="detail-label">OS（左眼）</div><textarea id="de-os" class="det-input" style="border:1.5px solid var(--border);border-radius:6px;padding:5px 9px;font-size:13px;width:100%;outline:none;color:var(--text);background:var(--surface);min-height:50px;resize:vertical;font-family:DM Mono,monospace" placeholder="OS 處方...">' + ((p.os&&p.os.raw)||'') + '</textarea></div>'
+          :
+          (p.brand ? '<div class="detail-item"><div class="detail-label">品牌／類型</div><div class="detail-value" style="color:var(--accent2);font-weight:600">' + p.brand + '</div></div>' : '') +
+          (p.dk ? '<div class="detail-item"><div class="detail-label">透氧値</div><div class="detail-value" style="font-weight:600;color:var(--green)">' + p.dk + '</div></div>' : '') +
+          '<div class="detail-item"><div class="detail-label">OD（右眼）</div><div class="detail-value mono">' + lensBlock('OD', p.od) + '</div></div>' +
+          '<div class="detail-item"><div class="detail-label">OS（左眼）</div><div class="detail-value mono">' + lensBlock('OS', p.os) + '</div></div>'
+        ) +
       '</div>' +
     '</div>' +
+'</div>' +
     '<div class="detail-section">' +
       '<div class="detail-section-title">排程</div>' +
-      '<div class="detail-grid">' +
-        '<div class="detail-item"><div class="detail-label">驗配日期</div><div class="detail-value">' + fmtDate(p.fittingDate) + '</div></div>' +
-        '<div class="detail-item"><div class="detail-label">取件日期</div><div class="detail-value">' + fmtDate(p.pickupDate) + '</div></div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px">' +
+        (detailEditMode ?
+          '<div class="detail-item"><div class="detail-label">驗配日期</div><input type="datetime-local" id="de-fittingDate" class="det-input" style="' + IS + '" value="' + (p.fittingDate||'') + '"></div>' +
+          '<div class="detail-item"><div class="detail-label">取件日期</div><input type="datetime-local" id="de-pickupDate" class="det-input" style="' + IS + '" value="' + (p.pickupDate||'') + '"></div>'
+          :
+          '<div class="detail-item"><div class="detail-label">驗配日期</div><div class="detail-value">' + fmtDate(p.fittingDate) + '</div></div>' +
+          '<div class="detail-item"><div class="detail-label">取件日期</div><div class="detail-value">' + fmtDate(p.pickupDate) + '</div></div>'
+        ) +
       '</div>' +
     '</div>' +
     (p.note ? '<div class="detail-section"><div class="detail-section-title">備註</div><div style="font-size:13px;color:var(--text)">' + p.note + '</div></div>' : '');
@@ -1735,6 +1853,22 @@ function saveDetailEdit(id) {
   if (g('doctor') !== null) p.doctor = g('doctor');
   const bg = document.getElementById('de-background');
   if (bg) p.background = bg.value.trim();
+  const fd = document.getElementById('de-fittingDate');
+  if (fd) p.fittingDate = fd.value;
+  const pd2 = document.getElementById('de-pickupDate');
+  if (pd2) p.pickupDate = pd2.value;
+  const brandEl = document.getElementById('de-brand');
+  if (brandEl !== null) p.brand = brandEl.value.trim();
+  const dkEl = document.getElementById('de-dk');
+  if (dkEl !== null) p.dk = dkEl.value.trim();
+  const odEl = document.getElementById('de-od');
+  if (odEl !== null && odEl.value.trim()) {
+    p.od = { raw: odEl.value.trim(), params: {}, isOrthoK: false };
+  }
+  const osEl = document.getElementById('de-os');
+  if (osEl !== null && osEl.value.trim()) {
+    p.os = { raw: osEl.value.trim(), params: {}, isOrthoK: false };
+  }
   save();
   detailEditMode = false;
   renderDetailContent(p);
@@ -2011,6 +2145,148 @@ function exportExcel() {
   URL.revokeObjectURL(url);
   showToast(`✅ 已匯出 ${filtered.length} 筆`);
 }
+// ── TASKS ──
+let tasks = JSON.parse(localStorage.getItem('cl-tasks') || '[]');
+let currentTaskId = null;
+let currentTaskType = 'purchase';
+
+function saveTasks() { localStorage.setItem('cl-tasks', JSON.stringify(tasks)); }
+
+function switchTaskType(type) {
+  currentTaskType = type;
+  document.getElementById('task-purchase-fields').style.display = type === 'purchase' ? '' : 'none';
+  document.getElementById('task-todo-fields').style.display = type === 'todo' ? '' : 'none';
+  document.getElementById('task-type-btn-purchase').className = 'btn btn-sm ' + (type === 'purchase' ? 'btn-primary' : 'btn-ghost');
+  document.getElementById('task-type-btn-todo').className = 'btn btn-sm ' + (type === 'todo' ? 'btn-primary' : 'btn-ghost');
+}
+
+function openTaskModal(id) {
+  currentTaskId = id || null;
+  const delBtn = document.getElementById('task-delete-btn');
+
+  if (id) {
+    // 編輯現有任務
+    const t = tasks.find(x => x.id === id);
+    if (!t) return;
+    document.getElementById('task-modal-title').textContent = '編輯任務';
+    delBtn.style.display = '';
+    switchTaskType(t.type);
+    if (t.type === 'purchase') {
+      document.getElementById('tk-hospital').value = t.hospital || '';
+      document.getElementById('tk-item').value = t.item || '';
+      document.getElementById('tk-todo').value = t.todo || '';
+      document.getElementById('tk-status').value = t.status || '待處理';
+      document.getElementById('tk-date').value = t.date || '';
+      document.getElementById('tk-note').value = t.note || '';
+    } else {
+      document.getElementById('tk-title').value = t.title || '';
+      document.getElementById('tk-todo-date').value = t.date || '';
+      document.getElementById('tk-todo-status').value = t.status || '待處理';
+      document.getElementById('tk-todo-note').value = t.note || '';
+    }
+  } else {
+    // 新增任務
+    document.getElementById('task-modal-title').textContent = '新增任務';
+    delBtn.style.display = 'none';
+    switchTaskType('purchase');
+    ['tk-hospital','tk-item','tk-todo','tk-note','tk-title','tk-todo-note'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    document.getElementById('tk-status').value = '待處理';
+    document.getElementById('tk-todo-status').value = '待處理';
+    document.getElementById('tk-date').value = '';
+    document.getElementById('tk-todo-date').value = '';
+  }
+  document.getElementById('task-modal').classList.add('open');
+}
+
+function saveTask() {
+  const type = currentTaskType;
+  let task;
+
+  if (type === 'purchase') {
+    const item = document.getElementById('tk-item').value.trim();
+    if (!item && !document.getElementById('tk-hospital').value.trim()) {
+      showToast('⚠️ 請填寫品項或醫院'); return;
+    }
+    task = {
+      id: currentTaskId || uid(), type: 'purchase',
+      hospital: document.getElementById('tk-hospital').value.trim(),
+      item: document.getElementById('tk-item').value.trim(),
+      todo: document.getElementById('tk-todo').value.trim(),
+      status: document.getElementById('tk-status').value,
+      date: document.getElementById('tk-date').value,
+      note: document.getElementById('tk-note').value.trim(),
+      createdAt: new Date().toISOString()
+    };
+  } else {
+    const title = document.getElementById('tk-title').value.trim();
+    if (!title) { showToast('⚠️ 請填寫標題'); return; }
+    task = {
+      id: currentTaskId || uid(), type: 'todo',
+      title,
+      date: document.getElementById('tk-todo-date').value,
+      status: document.getElementById('tk-todo-status').value,
+      note: document.getElementById('tk-todo-note').value.trim(),
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  if (currentTaskId) {
+    const idx = tasks.findIndex(x => x.id === currentTaskId);
+    if (idx > -1) tasks[idx] = task;
+  } else {
+    tasks.push(task);
+  }
+  saveTasks();
+  closeModal('task-modal');
+  renderCalendar();
+  renderTaskList();
+  showToast('✅ 任務已儲存');
+}
+
+function deleteCurrentTask() {
+  if (!currentTaskId) return;
+  tasks = tasks.filter(x => x.id !== currentTaskId);
+  saveTasks();
+  closeModal('task-modal');
+  renderCalendar();
+  renderTaskList();
+  showToast('🗑️ 任務已刪除');
+}
+
+function renderTaskList() {
+  const el = document.getElementById('cal-task-list');
+  if (!el) return;
+  if (!tasks.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">✨</div>沒有任務</div>'; return; }
+
+  const sorted = [...tasks].sort((a,b) => {
+    // 未完成優先，再按日期
+    if (a.status === '已完成' && b.status !== '已完成') return 1;
+    if (a.status !== '已完成' && b.status === '已完成') return -1;
+    return (a.date||'').localeCompare(b.date||'');
+  });
+
+  const statusColor = { '待處理': 'var(--orange)', '進行中': 'var(--accent)', '已完成': 'var(--green)' };
+  const statusBg = { '待處理': 'var(--orange-light)', '進行中': 'var(--accent-light)', '已完成': 'var(--green-light)' };
+
+  el.innerHTML = sorted.map(t => {
+    const isPurchase = t.type === 'purchase';
+    const title = isPurchase ? (t.item || '採購') : (t.title || '待辦');
+    const sub = isPurchase ? [t.hospital, t.todo].filter(Boolean).join(' · ') : '';
+    const dateStr = t.date ? new Date(t.date + (t.date.includes('T') ? '' : 'T00:00')).toLocaleDateString('zh-TW') : '';
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openTaskModal('${t.id}')">
+      <div style="width:8px;height:8px;border-radius:50%;background:${isPurchase ? 'var(--orange)' : '#9b59b6'};flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px;${t.status==='已完成'?'text-decoration:line-through;color:var(--text3)':''}">${title}</div>
+        ${sub ? `<div style="font-size:11px;color:var(--text3);margin-top:2px">${sub}</div>` : ''}
+        ${dateStr ? `<div style="font-size:11px;color:var(--text3)">${dateStr}</div>` : ''}
+      </div>
+      <span style="background:${statusBg[t.status]||'var(--surface2)'};color:${statusColor[t.status]||'var(--text2)'};font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;flex-shrink:0">${t.status}</span>
+    </div>`;
+  }).join('');
+}
+
 // ── INIT ──
 function backupCSV() {
   if (!patients.length) { showToast('⚠️ 尚無資料可備份'); return; }
